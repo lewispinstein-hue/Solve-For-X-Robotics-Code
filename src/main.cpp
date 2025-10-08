@@ -1,31 +1,37 @@
 #include "main.h"
+#include "pros/llemu.hpp"
 #include "pros/misc.h"
+#include "pros/motor_group.hpp"
 #include <iostream>
 
 using namespace std;
-
-pros::MotorGroup left_motors_drivetrain({3, 12, 13});
+// init drivetrain motor groups and controller
+pros::MotorGroup left_motors_drivetrain({-4, -14, 13});
 pros::MotorGroup right_motors_drivetrain({8, -20, 18});
 pros::Controller main_controller(pros::E_CONTROLLER_MASTER);
 
-// init variables for joystick values
-int LEFT_X_AXIS = main_controller.get_analog(
-    pros::E_CONTROLLER_ANALOG_LEFT_X); // LEFT STICK X AXIS
-
-int LEFT_Y_AXIS = main_controller.get_analog(
-    pros::E_CONTROLLER_ANALOG_LEFT_Y); // LEFT STICK Y AXIS
-
-int RIGHT_X_AXIS = main_controller.get_analog(
-    pros::E_CONTROLLER_ANALOG_RIGHT_X); // RIGHT STICK X AXIS
-
-int RIGHT_Y_AXIS = main_controller.get_analog(
-    pros::E_CONTROLLER_ANALOG_RIGHT_Y); // RIGHT STICK Y AXIS
+// intake and transit motors
+pros::MotorGroup
+    upper_transit_motor({9, false}); // intake motor (intake and outtake)
+pros::MotorGroup
+    intake_transit_motor({-2, false}); // intake motor (intake and outtake)
 
 // pneumatics
+bool funnel_engaged = false;
 pros::adi::Pneumatics funnel_pneumatic_right('A', false);
 pros::adi::Pneumatics funnel_pneumatic_left('B', false);
-// descore pneumatics
+
+// descore pneumatic
+bool descore_pneumatic_state = false;
 pros::adi::Pneumatics descore_pneumatic('C', true);
+
+enum ball_conveyor_state {
+  UPPER_GOAL, // intake balls || spin both up
+  LOWER_GOAL, // outtake balls || spin INTAKE_TRANSIST up, UPPER_TRANSIT down
+  OUTTAKE,    // outtake balls || spin both down
+  STOPPED     // stop both motors
+};
+ball_conveyor_state current_ball_conveyor_state = STOPPED; // initial state
 
 /**
  * A callback function for LLEMU's center button.
@@ -77,9 +83,7 @@ void competition_initialize() {}
 
 // bool
 void checkControllerButtonPress() {
-
   if (pros::E_CONTROLLER_DIGITAL_L1) {
-    cout << "L1 is pressed\n";
   }
   if (pros::E_CONTROLLER_DIGITAL_L2) {
     cout << "L2 is pressed\n";
@@ -125,19 +129,32 @@ void opcontrol() {
                      (pros::lcd::read_buttons() & LCD_BTN_RIGHT) >>
                          0); // Prints status of the emulated screen LCDs
 
-    checkControllerButtonPress(); // Check if any controller buttons are pressed for testing
+    checkControllerButtonPress(); // Check if any controller buttons are pressed
+                                  // for testing
 
     // Arcade control scheme
 
-    int power_arcade_drive = main_controller.get_analog(
-        ANALOG_LEFT_Y); // Gets amount forward/backward from left joystick
-    int turn_arcade_drive = main_controller.get_analog(
-        ANALOG_RIGHT_X); // Gets the turn left/right from right joystick
+    // init variables for joystick values
+    int LEFT_X_AXIS = main_controller.get_analog(
+        pros::E_CONTROLLER_ANALOG_LEFT_X); // LEFT STICK X AXIS
 
-    left_motors_drivetrain.move(power_arcade_drive -
-                                turn_arcade_drive); // Sets left motor voltage
-    right_motors_drivetrain.move(power_arcade_drive +
-                                 turn_arcade_drive); // Sets right motor voltage
+    int LEFT_Y_AXIS = main_controller.get_analog(
+        pros::E_CONTROLLER_ANALOG_LEFT_Y); // LEFT STICK Y AXIS
+
+    int RIGHT_X_AXIS = main_controller.get_analog(
+        pros::E_CONTROLLER_ANALOG_RIGHT_X); // RIGHT STICK X AXIS
+
+    int RIGHT_Y_AXIS = main_controller.get_analog(
+        pros::E_CONTROLLER_ANALOG_RIGHT_Y); // RIGHT STICK Y AXIS
+
+    left_motors_drivetrain.move(LEFT_Y_AXIS + RIGHT_X_AXIS);
+    right_motors_drivetrain.move(LEFT_Y_AXIS - RIGHT_X_AXIS);
+    // left_motors_drivetrain.move(LEFT_Y_AXIS);  // Sets left motor voltage
+    // right_motors_drivetrain.move(LEFT_Y_AXIS); // Sets right motor voltage
+    pros::lcd::print(0, "%d %d %d", LEFT_X_AXIS, LEFT_Y_AXIS, RIGHT_X_AXIS);
+    // right_motors_drivetrain.move(power_arcade_drive -
+    //                              turn_arcade_drive); // Sets right motor
+    //                              voltage
 
     pros::delay(20); // Run for 20 ms then update
   }

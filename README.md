@@ -25,8 +25,8 @@ B = release intake
 
 ports: 
 left dt = 3,12,13
-right dt = 8,-20,18
-1st intake = -2
+right dt = 8,20,18
+1st intake = 2
 last stage = 9 
 
 descorrer = TBD
