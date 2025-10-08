@@ -1,4 +1,8 @@
 #include "main.h"
+#include "pros/misc.h"
+#include <iostream>
+
+using namespace std;
 
 pros::MotorGroup left_motors_drivetrain({3, 12, 13});
 pros::MotorGroup right_motors_drivetrain({8, -20, 18});
@@ -7,13 +11,21 @@ pros::Controller main_controller(pros::E_CONTROLLER_MASTER);
 // init variables for joystick values
 int LEFT_X_AXIS = main_controller.get_analog(
     pros::E_CONTROLLER_ANALOG_LEFT_X); // LEFT STICK X AXIS
+
 int LEFT_Y_AXIS = main_controller.get_analog(
     pros::E_CONTROLLER_ANALOG_LEFT_Y); // LEFT STICK Y AXIS
 
 int RIGHT_X_AXIS = main_controller.get_analog(
     pros::E_CONTROLLER_ANALOG_RIGHT_X); // RIGHT STICK X AXIS
+
 int RIGHT_Y_AXIS = main_controller.get_analog(
     pros::E_CONTROLLER_ANALOG_RIGHT_Y); // RIGHT STICK Y AXIS
+
+// pneumatics
+pros::adi::Pneumatics funnel_pneumatic_right('A', false);
+pros::adi::Pneumatics funnel_pneumatic_left('B', false);
+// descore pneumatics
+pros::adi::Pneumatics descore_pneumatic('C', true);
 
 /**
  * A callback function for LLEMU's center button.
@@ -63,6 +75,22 @@ void disabled() {}
  */
 void competition_initialize() {}
 
+// bool
+void checkControllerButtonPress() {
+
+  if (pros::E_CONTROLLER_DIGITAL_L1) {
+    cout << "L1 is pressed\n";
+  }
+  if (pros::E_CONTROLLER_DIGITAL_L2) {
+    cout << "L2 is pressed\n";
+  }
+  if (pros::E_CONTROLLER_DIGITAL_R1) {
+    cout << "R1 is pressed\n";
+  }
+  if (pros::E_CONTROLLER_DIGITAL_R2) {
+    cout << "R2 is pressed\n";
+  }
+}
 /**
  * Runs the user autonomous code. This function will be started in its own task
  * with the default priority and stack size whenever the robot is enabled via
@@ -97,21 +125,20 @@ void opcontrol() {
                      (pros::lcd::read_buttons() & LCD_BTN_RIGHT) >>
                          0); // Prints status of the emulated screen LCDs
 
+    checkControllerButtonPress(); // Check if any controller buttons are pressed for testing
+
     // Arcade control scheme
-	
-    int dir = main_controller.get_analog(ANALOG_RIGHT_Y); // Gets amount forward/backward from right joystick
-    int turn = main_controller.get_analog(ANALOG_LEFT_X); // Gets the turn left/right from left joystick
 
-    left_motors_drivetrain.move(dir - turn);  // Sets left motor voltage
-    right_motors_drivetrain.move(dir + turn); // Sets right motor voltage
+    int power_arcade_drive = main_controller.get_analog(
+        ANALOG_LEFT_Y); // Gets amount forward/backward from left joystick
+    int turn_arcade_drive = main_controller.get_analog(
+        ANALOG_RIGHT_X); // Gets the turn left/right from right joystick
 
-    pros::delay(20);                          // Run for 20 ms then update
+    left_motors_drivetrain.move(power_arcade_drive -
+                                turn_arcade_drive); // Sets left motor voltage
+    right_motors_drivetrain.move(power_arcade_drive +
+                                 turn_arcade_drive); // Sets right motor voltage
+
+    pros::delay(20); // Run for 20 ms then update
   }
-}
-
-int forward = -main_controller.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
-int turn = main_controller.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_X);
-void arcade_drive(const int forward, const int turn) {
-  left_motors_drivetrain.move(forward + turn);
-  right_motors_drivetrain.move(forward - turn);
 }
