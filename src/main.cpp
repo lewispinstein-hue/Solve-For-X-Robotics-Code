@@ -1,4 +1,5 @@
 #include "main.h"
+#include "liblvgl/llemu.hpp"
 #include "pros/llemu.hpp"
 #include "pros/misc.h"
 #include "pros/motor_group.hpp"
@@ -18,8 +19,8 @@ pros::MotorGroup
 
 // pneumatics
 bool funnel_engaged = false;
-pros::adi::Pneumatics funnel_pneumatic_right('A', false);
-pros::adi::Pneumatics funnel_pneumatic_left('B', false);
+pros::adi::Pneumatics funnel_pneumatic_right('H', false);
+pros::adi::Pneumatics funnel_pneumatic_left('G', false);
 
 // descore pneumatic
 bool descore_pneumatic_state = false;
@@ -40,16 +41,6 @@ ball_conveyor_state current_ball_conveyor_state = STOPPED; // initial state
  * "I was pressed!" and nothing.
  */
 
-void on_center_button() {
-  static bool pressed = false;
-  pressed = !pressed;
-  if (pressed) {
-    pros::lcd::set_text(2, "I was pressed!");
-  } else {
-    pros::lcd::clear_line(2);
-  }
-}
-
 /**
  * Runs initialization code. This occurs as soon as the program is started.
  *
@@ -59,8 +50,6 @@ void on_center_button() {
 void initialize() {
   pros::lcd::initialize();
   pros::lcd::set_text(1, "Hello PROS User!");
-
-  pros::lcd::register_btn1_cb(on_center_button);
 }
 
 /**
@@ -81,18 +70,38 @@ void disabled() {}
  */
 void competition_initialize() {}
 
-// bool
+// function to update pneumatics based on states
+void updatePneumatics() {
+  if (funnel_engaged) {
+    funnel_pneumatic_right.set_value(true);
+    funnel_pneumatic_left.set_value(true);
+  } else if (funnel_engaged == false) {
+    funnel_pneumatic_right.set_value(false);
+    funnel_pneumatic_left.set_value(false);
+  }
+
+  if (descore_pneumatic_state) {
+    descore_pneumatic.set_value(true);
+  } else {
+    descore_pneumatic.set_value(false);
+  }
+}
+
 void checkControllerButtonPress() {
-  if (pros::E_CONTROLLER_DIGITAL_L1) {
+  if (main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_L1)) {
+    pros::lcd::print(2, "L1 is pressed\n");
   }
-  if (pros::E_CONTROLLER_DIGITAL_L2) {
-    cout << "L2 is pressed\n";
+  else if (main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_L2)) {
+    pros::lcd::print(2, "L2 is pressed\n");
+    descore_pneumatic_state = !descore_pneumatic_state;
   }
-  if (pros::E_CONTROLLER_DIGITAL_R1) {
-    cout << "R1 is pressed\n";
+  else if (main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_R1)) {
+    pros::lcd::print(2, "R1 is pressed\n");
   }
-  if (pros::E_CONTROLLER_DIGITAL_R2) {
-    cout << "R2 is pressed\n";
+  else if (main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_R2)) {
+    pros::lcd::print(2, "R2 is pressed\n");
+  } else {
+    pros::lcd::print(2, "No buttons pressed\n");
   }
 }
 /**
@@ -130,7 +139,7 @@ void opcontrol() {
                          0); // Prints status of the emulated screen LCDs
 
     checkControllerButtonPress(); // Check if any controller buttons are pressed
-                                  // for testing
+    updatePneumatics();           // Update pneumatics based on states
 
     // Arcade control scheme
 
@@ -147,15 +156,19 @@ void opcontrol() {
     int RIGHT_Y_AXIS = main_controller.get_analog(
         pros::E_CONTROLLER_ANALOG_RIGHT_Y); // RIGHT STICK Y AXIS
 
-    left_motors_drivetrain.move(LEFT_Y_AXIS + RIGHT_X_AXIS);
-    right_motors_drivetrain.move(LEFT_Y_AXIS - RIGHT_X_AXIS);
-    // left_motors_drivetrain.move(LEFT_Y_AXIS);  // Sets left motor voltage
-    // right_motors_drivetrain.move(LEFT_Y_AXIS); // Sets right motor voltage
-    pros::lcd::print(0, "%d %d %d", LEFT_X_AXIS, LEFT_Y_AXIS, RIGHT_X_AXIS);
-    // right_motors_drivetrain.move(power_arcade_drive -
-    //                              turn_arcade_drive); // Sets right motor
-    //                              voltage
+    // if the turn value is not large unough, disregard and just use
+    // forward/backward
+    if ((RIGHT_X_AXIS < -5 || RIGHT_X_AXIS > 5) &&
+        (LEFT_Y_AXIS > 5 || LEFT_Y_AXIS < -5)) {
+      printf("Turning and moving\n");
 
-    pros::delay(20); // Run for 20 ms then update
+    } else {
+      printf("Just f/r\n");
+      left_motors_drivetrain.move(LEFT_Y_AXIS + RIGHT_X_AXIS);
+      right_motors_drivetrain.move(LEFT_Y_AXIS - RIGHT_X_AXIS);
+    }
+
+    pros::lcd::print(1, "LX: %d LY: %d RX: %d RY: %d", LEFT_X_AXIS, LEFT_Y_AXIS, RIGHT_X_AXIS, RIGHT_Y_AXIS);
+    pros::delay(20);                    // Run for 20 ms then update
   }
 }
