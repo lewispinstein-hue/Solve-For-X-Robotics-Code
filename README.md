@@ -1,5 +1,7 @@
 LOG
 
+use Shift+cmd+p and run PROS: Tntegrated Terminal to open a PROS terminal
+
 Biel gmail: bielgiliharik@gmail.com
 Lewis gmail: lewispinstein@gmail.com
 
