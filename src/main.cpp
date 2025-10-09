@@ -5,13 +5,14 @@
 #include "pros/misc.h"
 #include "pros/motor_group.hpp"
 
+
+// defines for controller buttons for readability
 #define CONTROLLER_R1 E_CONTROLLER_DIGITAL_R1
 #define CONTROLLER_R2 E_CONTROLLER_DIGITAL_R2
 #define CONTROLLER_L1 E_CONTROLLER_DIGITAL_R1
 #define CONTROLLER_L2 E_CONTROLLER_DIGITAL_L2
 #define CONTROLLER_B E_CONTROLLER_DIGITAL_B
 
-#define TOGGLE_DESCORER E_CONTROLLER_DIGITAL_L2 // define toggle descorer button
 #define SPIN_FOR_UPPER_GOAL CONTROLLER_R2  // define spin for upper goal button
 #define SPIN_FOR_MIDDLE_GOAL CONTROLLER_R1 // define spin for middle goal button
 #define TOGGLE_INTAKE_FUNNEL CONTROLLER_B  // define toggle funnel intake button
@@ -27,15 +28,10 @@ bool funnel_engaged = false;
 pros::adi::Pneumatics funnel_pneumatic_right('H', false);
 pros::adi::Pneumatics funnel_pneumatic_left('G', false);
 
-// descore pneumatic
-bool descore_pneumatic_state = false;
-pros::adi::Pneumatics descore_pneumatic('C', true);
-
 // intake and transit motors
-pros::MotorGroup
-    upper_transit_motor({9, false}); // intake motor (intake and outtake)
-pros::MotorGroup
-    intake_transit_motor({-2, false}); // intake motor (intake and outtake)
+pros::MotorGroup upper_transit_motor({7});
+pros::MotorGroup intake_transit_motor({-2});
+
 // enum for ball conveyer belt
 enum ball_conveyor_state {
   UPPER_GOAL,  // intake balls || spin both up
@@ -44,7 +40,7 @@ enum ball_conveyor_state {
   STOPPED      // stop both motors
 };
 
-ball_conveyor_state current_ball_conveyor_state = STOPPED; // initial state
+ball_conveyor_state current_ball_conveyor_state;
 
 /**
  * A callback function for LLEMU's center button.
@@ -60,6 +56,9 @@ ball_conveyor_state current_ball_conveyor_state = STOPPED; // initial state
  * to keep execution time for this mode under a few seconds.
  */
 void initialize() {
+  left_motors_drivetrain.set_brake_mode(pros::MotorBrake::brake);
+  right_motors_drivetrain.set_brake_mode(pros::MotorBrake::brake);
+
   pros::lcd::initialize();
   pros::lcd::set_text(1, "Hello PROS User!");
   ball_conveyor_state current_ball_conveyor_state = STOPPED; // initial state
@@ -70,7 +69,10 @@ void initialize() {
  * the VEX Competition Switch, following either autonomous or opcontrol. When
  * the robot is enabled, this task will exit.
  */
-void disabled() {}
+void disabled() {
+  ball_conveyor_state current_ball_conveyor_state = STOPPED;
+  funnel_engaged = false;
+}
 
 /**
  * Runs after initialize(), and before autonomous when connected to the Field
@@ -93,14 +95,6 @@ void updatePneumatics() {
     // disengage funnel pneumatics when false
     funnel_pneumatic_right.set_value(false);
     funnel_pneumatic_left.set_value(false);
-  }
-
-  if (descore_pneumatic_state) {
-    descore_pneumatic.set_value(true);
-    // engage descore pneumatics when true
-  } else if (!descore_pneumatic_state) {
-    // disengage descore pneumatics when false
-    descore_pneumatic.set_value(false);
   }
 }
 
@@ -132,11 +126,6 @@ void updateBallConveyorMotors() {
 void checkControllerButtonPress() {
   if (main_controller.get_digital_new_press(pros::TOGGLE_INTAKE_FUNNEL)) {
     funnel_engaged = !funnel_engaged;
-    pros::lcd::print(2, "L1 is pressed\n");
-
-  } else if (main_controller.get_digital_new_press(pros::TOGGLE_DESCORER)) {
-    descore_pneumatic_state = !descore_pneumatic_state;
-    pros::lcd::print(2, "L2 is pressed\n");
 
   } else if (main_controller.get_digital_new_press(
                  pros::SPIN_FOR_MIDDLE_GOAL)) {
@@ -148,7 +137,6 @@ void checkControllerButtonPress() {
     } else {
       current_ball_conveyor_state = MIDDLE_GOAL;
     }
-    pros::lcd::print(2, "R1 is pressed\n");
 
   } else if (main_controller.get_digital_new_press(pros::SPIN_FOR_UPPER_GOAL)) {
     // for toggelable button
@@ -160,9 +148,9 @@ void checkControllerButtonPress() {
       current_ball_conveyor_state =
           UPPER_GOAL; // if in middle goal state, switch to upper goal state
     }
-    pros::lcd::print(2, "R2 is pressed\n");
   } else {
-    pros::lcd::print(2, "No buttons pressed\n");
+    pros::lcd::print(1, "Pneumatic: %d | InFunnel: %d | Conveyer state: %d",
+                     funnel_engaged, current_ball_conveyor_state);
   }
 }
 
@@ -172,7 +160,6 @@ void handleDrivetrainControl(int LEFT_Y_AXIS, int RIGHT_X_AXIS,
   // if the turn value is not large unough, disregard and just use
   // Arcade control scheme
   // forward/backward
-  // PROBLEM: when both sticks are pushed, the robot does not move diagonally
 
   // deadzone for joystick values
   if ((abs(LEFT_Y_AXIS) < 5 && abs(LEFT_Y_AXIS) > -5) &&
@@ -183,7 +170,6 @@ void handleDrivetrainControl(int LEFT_Y_AXIS, int RIGHT_X_AXIS,
 
   // Constants
   constexpr int MOTOR_MAX = 127;
-
   // Overflow transfer correction
   double difference = 0.0;
   // easily changable scale factor
@@ -254,7 +240,6 @@ void autonomous() {}
  */
 void opcontrol() {
   while (true) {
-
     // init variables for joystick values
     int LEFT_X_AXIS = main_controller.get_analog(
         pros::E_CONTROLLER_ANALOG_LEFT_X); // LEFT STICK X AXIS
@@ -275,20 +260,17 @@ void opcontrol() {
 
     checkControllerButtonPress(); // Check if any controller buttons are pressed
     updatePneumatics();           // Update pneumatics based on bool/enum states
+    updateBallConveyorMotors();
     handleDrivetrainControl(
         LEFT_Y_AXIS, RIGHT_X_AXIS, left_motor_voltage,
         right_motor_voltage); // Handle drive control and motor
 
-    main_controller.print(
-        0, 0, "LX: %d LY: %d RX: %d RY: %d", LEFT_X_AXIS, LEFT_Y_AXIS,
-        RIGHT_X_AXIS,
-        RIGHT_Y_AXIS); // print joystick values to controller screen for testing
-    main_controller.print(1, 0, "\033[31m");
-    main_controller.print(1, 0, "LVOLT: %.2f RVOLT: %.2f", left_motor_voltage,
-                          right_motor_voltage); // print motor voltages to
+    pros::lcd::print(0, "LV:%f|RV:%f", left_motor_voltage, right_motor_voltage);
+
+    // print joystick values to controller screen for testing
     // controller screen for testing
-    left_motors_drivetrain.move_voltage(left_motor_voltage);
-    right_motors_drivetrain.move_voltage(right_motor_voltage);
+    left_motors_drivetrain.move(left_motor_voltage);
+    right_motors_drivetrain.move(right_motor_voltage);
 
     pros::delay(20); // Run for 20 ms then update to keep cpu happy :)
   }
