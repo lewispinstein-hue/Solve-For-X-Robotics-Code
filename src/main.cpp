@@ -6,13 +6,17 @@
 #include <iostream>
 
 #define TOGGLE_DESCORER E_CONTROLLER_DIGITAL_L2 // define toggle descorer button
-#define CONTROLLER_L1 E_CONTROLLER_DIGITAL_L1
+
 #define SPIN_FOR_UPPER_GOAL                                                    \
   E_CONTROLLER_DIGITAL_R2 // define spin for upper goal button
+
 #define SPIN_FOR_MIDDLE_GOAL                                                   \
   E_CONTROLLER_DIGITAL_R1 // define spin for middle goal button
+
 #define TOGGLE_INTAKE_FUNNEL                                                   \
   E_CONTROLLER_DIGITAL_B // define toggle funnel button
+
+#define CONTROLLER_L1 E_CONTROLLER_DIGITAL_L1 // define controller L1 button
 
 using namespace std;
 // init drivetrain motor groups and controller
@@ -229,6 +233,6 @@ void opcontrol() {
     left_motors_drivetrain.move_voltage(left_motor_voltage);
     right_motors_drivetrain.move_voltage(right_motor_voltage);
 
-    pros::delay(20); // Run for 20 ms then update
+    pros::delay(20); // Run for 20 ms then update to keep cpu happy :)
   }
 }
