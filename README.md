@@ -16,16 +16,16 @@ We are using arcade double stick with a 0.25 bias for the drivetrain
 functionality:
 Left joystick = forward + backward
 Right joystick = left and right 
-R1 = spin intake
-R2 = spins body
+R1 = spins for middle goal
+R2 = spin for upper goal
 L1 = 
 L2 = extand and retract de-scorer
 x = 
-B = release intake 
+B = toggle intake 
 
 ports: 
-left dt = 3,12,13
-right dt = 8,20,18
+left dt = -3,-14,13
+right dt = 8, -20,18
 1st intake = 2
 last stage = 9 
 

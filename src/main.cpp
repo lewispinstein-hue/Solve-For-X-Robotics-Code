@@ -5,6 +5,12 @@
 #include "pros/motor_group.hpp"
 #include <iostream>
 
+#define TOGGLE_DESCORER E_CONTROLLER_DIGITAL_L2 //define toggle descorer button
+#define CONTROLLER_L1 E_CONTROLLER_DIGITAL_L1
+#define SPIN_FOR_UPPER_GOAL E_CONTROLLER_DIGITAL_R2 //define spin for upper goal button
+#define SPIN_FOR_MIDDLE_GOAL E_CONTROLLER_DIGITAL_R1 //define spin for middle goal button
+#define TOGGLE_INTAKE_FUNNEL E_CONTROLLER_DIGITAL_B //define toggle funnel button
+
 using namespace std;
 // init drivetrain motor groups and controller
 pros::MotorGroup left_motors_drivetrain({-4, -14, 13});
@@ -73,37 +79,44 @@ void competition_initialize() {}
 // function to update pneumatics based on states
 void updatePneumatics() {
   if (funnel_engaged) {
+    // engage funnel pneumatics when true
     funnel_pneumatic_right.set_value(true);
     funnel_pneumatic_left.set_value(true);
-  } else if (funnel_engaged == false) {
+  } else if (!funnel_engaged) {
+    // disengage funnel pneumatics when false
     funnel_pneumatic_right.set_value(false);
     funnel_pneumatic_left.set_value(false);
   }
 
   if (descore_pneumatic_state) {
     descore_pneumatic.set_value(true);
-  } else {
+    // engage descore pneumatics when true
+  } else if (!descore_pneumatic_state) {
+    // disengage descore pneumatics when false
     descore_pneumatic.set_value(false);
   }
 }
-
+// function to check if any controller buttons are pressed
 void checkControllerButtonPress() {
-  if (main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_L1)) {
+  if (main_controller.get_digital(pros::TOGGLE_INTAKE_FUNNEL)) {
+    funnel_engaged = !funnel_engaged;
     pros::lcd::print(2, "L1 is pressed\n");
-  }
-  else if (main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_L2)) {
-    pros::lcd::print(2, "L2 is pressed\n");
+
+  } else if (main_controller.get_digital(pros::TOGGLE_DESCORER)) {
     descore_pneumatic_state = !descore_pneumatic_state;
-  }
-  else if (main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_R1)) {
+    pros::lcd::print(2, "L2 is pressed\n");
+
+  } else if (main_controller.get_digital(pros::SPIN_FOR_MIDDLE_GOAL)) {
     pros::lcd::print(2, "R1 is pressed\n");
-  }
-  else if (main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_R2)) {
+    current_ball_conveyor_state = LOWER_GOAL;
+  } else if (main_controller.get_digital(pros::SPIN_FOR_UPPER_GOAL)) {
     pros::lcd::print(2, "R2 is pressed\n");
+    current_ball_conveyor_state = UPPER_GOAL;
   } else {
     pros::lcd::print(2, "No buttons pressed\n");
   }
 }
+
 /**
  * Runs the user autonomous code. This function will be started in its own task
  * with the default priority and stack size whenever the robot is enabled via
@@ -132,16 +145,9 @@ void autonomous() {}
  */
 void opcontrol() {
   while (true) {
-    pros::lcd::print(0, "%d %d %d",
-                     (pros::lcd::read_buttons() & LCD_BTN_LEFT) >> 2,
-                     (pros::lcd::read_buttons() & LCD_BTN_CENTER) >> 1,
-                     (pros::lcd::read_buttons() & LCD_BTN_RIGHT) >>
-                         0); // Prints status of the emulated screen LCDs
 
     checkControllerButtonPress(); // Check if any controller buttons are pressed
-    updatePneumatics();           // Update pneumatics based on states
-
-    // Arcade control scheme
+    updatePneumatics();           // Update pneumatics based on bool/enum states
 
     // init variables for joystick values
     int LEFT_X_AXIS = main_controller.get_analog(
@@ -157,18 +163,62 @@ void opcontrol() {
         pros::E_CONTROLLER_ANALOG_RIGHT_Y); // RIGHT STICK Y AXIS
 
     // if the turn value is not large unough, disregard and just use
+    // Arcade control scheme
     // forward/backward
-    if ((RIGHT_X_AXIS < -5 || RIGHT_X_AXIS > 5) &&
-        (LEFT_Y_AXIS > 5 || LEFT_Y_AXIS < -5)) {
-      printf("Turning and moving\n");
+    // PROBLEM: when both sticks are pushed, the robot does not move diagonally
 
-    } else {
-      printf("Just f/r\n");
-      left_motors_drivetrain.move(LEFT_Y_AXIS + RIGHT_X_AXIS);
-      right_motors_drivetrain.move(LEFT_Y_AXIS - RIGHT_X_AXIS);
-    }
 
-    pros::lcd::print(1, "LX: %d LY: %d RX: %d RY: %d", LEFT_X_AXIS, LEFT_Y_AXIS, RIGHT_X_AXIS, RIGHT_Y_AXIS);
-    pros::delay(20);                    // Run for 20 ms then update
+    double left_motor_voltage =
+        LEFT_Y_AXIS + RIGHT_X_AXIS; // left motor voltage calculation
+    double right_motor_voltage =
+        LEFT_Y_AXIS - RIGHT_X_AXIS; // right motor voltage calculation
+
+
+          // Constants
+  constexpr int MOTOR_MAX = 127;
+
+// Overflow transfer correction
+double difference = 0.0;
+
+// left motor overflow cases
+if (left_motor_voltage > MOTOR_MAX) {
+    // Left is too positive (forward too strong)
+    difference = (left_motor_voltage - MOTOR_MAX) / 2.0;
+    left_motor_voltage = MOTOR_MAX;
+    right_motor_voltage -= difference;  // reduce right to preserve ratio
+}
+else if (left_motor_voltage < -MOTOR_MAX) {
+    // Left is too negative (reverse too strong)
+    difference = (left_motor_voltage + MOTOR_MAX) / 2.0;
+    left_motor_voltage = -MOTOR_MAX;
+    right_motor_voltage -= difference;  // subtract because left is underflowing
+}
+
+// right motor overflow cases
+if (right_motor_voltage > MOTOR_MAX) {
+    // Right is too positive (forward too strong)
+    difference = (right_motor_voltage - MOTOR_MAX) / 2.0;
+    right_motor_voltage = MOTOR_MAX;
+    left_motor_voltage -= difference;
+}
+else if (right_motor_voltage < -MOTOR_MAX) {
+    // Right is too negative (reverse too strong)
+    difference = (right_motor_voltage + MOTOR_MAX) / 2.0;
+    right_motor_voltage = -MOTOR_MAX;
+    left_motor_voltage -= difference;
+}
+
+// double check to make sure we are in range
+if (left_motor_voltage > MOTOR_MAX)  left_motor_voltage = MOTOR_MAX;
+if (left_motor_voltage < -MOTOR_MAX) left_motor_voltage = -MOTOR_MAX;
+if (right_motor_voltage > MOTOR_MAX) right_motor_voltage = MOTOR_MAX;
+if (right_motor_voltage < -MOTOR_MAX) right_motor_voltage = -MOTOR_MAX;
+
+    main_controller.print(
+        0, 0, "LX: %d LY: %d RX: %d RY: %d", LEFT_X_AXIS, LEFT_Y_AXIS,
+        RIGHT_X_AXIS,
+        RIGHT_Y_AXIS); // print joystick values to controller screen for testing
+
+    pros::delay(20); // Run for 20 ms then update
   }
 }
