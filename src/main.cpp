@@ -1,9 +1,9 @@
 #include "main.h"
 #include "liblvgl/llemu.hpp"
+#include "pros/abstract_motor.hpp"
 #include "pros/llemu.hpp"
 #include "pros/misc.h"
 #include "pros/motor_group.hpp"
-#include <iostream>
 
 #define TOGGLE_DESCORER E_CONTROLLER_DIGITAL_L2 // define toggle descorer button
 
@@ -25,11 +25,11 @@ pros::MotorGroup right_motors_drivetrain({8, -20, 18});
 pros::Controller main_controller(pros::E_CONTROLLER_MASTER);
 
 // intake and transit motors
+bool transit_engaged = false;
 pros::MotorGroup
     upper_transit_motor({9, false}); // intake motor (intake and outtake)
 pros::MotorGroup
     intake_transit_motor({-2, false}); // intake motor (intake and outtake)
-
 // pneumatics
 bool funnel_engaged = false;
 pros::adi::Pneumatics funnel_pneumatic_right('H', false);
@@ -40,10 +40,10 @@ bool descore_pneumatic_state = false;
 pros::adi::Pneumatics descore_pneumatic('C', true);
 
 enum ball_conveyor_state {
-  UPPER_GOAL, // intake balls || spin both up
-  LOWER_GOAL, // outtake balls || spin INTAKE_TRANSIST up, UPPER_TRANSIT down
-  OUTTAKE,    // outtake balls || spin both down
-  STOPPED     // stop both motors
+  UPPER_GOAL,  // intake balls || spin both up
+  MIDDLE_GOAL, // outtake balls || spin INTAKE_TRANSIST up, UPPER_TRANSIT down
+  OUTTAKE,     // outtake balls || spin both down
+  STOPPED      // stop both motors
 };
 ball_conveyor_state current_ball_conveyor_state = STOPPED; // initial state
 
@@ -63,6 +63,7 @@ ball_conveyor_state current_ball_conveyor_state = STOPPED; // initial state
 void initialize() {
   pros::lcd::initialize();
   pros::lcd::set_text(1, "Hello PROS User!");
+  ball_conveyor_state current_ball_conveyor_state = STOPPED; // initial state
 }
 
 /**
@@ -103,25 +104,125 @@ void updatePneumatics() {
     descore_pneumatic.set_value(false);
   }
 }
+
+void updateBallConveyorMotors() {
+  switch (current_ball_conveyor_state) {
+  case UPPER_GOAL:
+    upper_transit_motor.move(127);  // spin upper transit motor
+    intake_transit_motor.move(127); // spin intake transit motor
+    break;
+  case MIDDLE_GOAL:
+    upper_transit_motor.move(-127); // spin upper transit
+    intake_transit_motor.move(127); // spin intake transit
+    break;
+  case OUTTAKE:
+    upper_transit_motor.move(-127);  // spin upper transit motor
+    intake_transit_motor.move(-127); // spin intake transit motor
+    break;
+  case STOPPED:
+    upper_transit_motor.set_brake_mode(
+        pros::MotorBrake::brake); // stop upper transit motor
+    intake_transit_motor.set_brake_mode(
+        pros::MotorBrake::brake); // stop intake transit motor
+    upper_transit_motor.move(0);
+    intake_transit_motor.move(0);
+    break;
+  }
+}
 // function to check if any controller buttons are pressed
 void checkControllerButtonPress() {
-  if (main_controller.get_digital(pros::TOGGLE_INTAKE_FUNNEL)) {
+  if (main_controller.get_digital_new_press(pros::TOGGLE_INTAKE_FUNNEL)) {
     funnel_engaged = !funnel_engaged;
     pros::lcd::print(2, "L1 is pressed\n");
 
-  } else if (main_controller.get_digital(pros::TOGGLE_DESCORER)) {
+  } else if (main_controller.get_digital_new_press(pros::TOGGLE_DESCORER)) {
     descore_pneumatic_state = !descore_pneumatic_state;
     pros::lcd::print(2, "L2 is pressed\n");
 
-  } else if (main_controller.get_digital(pros::SPIN_FOR_MIDDLE_GOAL)) {
+  } else if (main_controller.get_digital_new_press(
+                 pros::SPIN_FOR_MIDDLE_GOAL)) {
+    // for toggleable button
+    if (current_ball_conveyor_state == MIDDLE_GOAL) {
+      current_ball_conveyor_state = STOPPED;
+    } else if (current_ball_conveyor_state == STOPPED) {
+      current_ball_conveyor_state = MIDDLE_GOAL;
+    } else {
+      current_ball_conveyor_state = MIDDLE_GOAL;
+    }
     pros::lcd::print(2, "R1 is pressed\n");
-    current_ball_conveyor_state = LOWER_GOAL;
-  } else if (main_controller.get_digital(pros::SPIN_FOR_UPPER_GOAL)) {
+
+  } else if (main_controller.get_digital_new_press(pros::SPIN_FOR_UPPER_GOAL)) {
+    // for toggelable button
+    if (current_ball_conveyor_state == UPPER_GOAL) {
+      current_ball_conveyor_state = STOPPED;
+    } else if (current_ball_conveyor_state == STOPPED) {
+      current_ball_conveyor_state = UPPER_GOAL;
+    } else {
+      current_ball_conveyor_state =
+          UPPER_GOAL; // if in middle goal state, switch to upper goal state
+    }
     pros::lcd::print(2, "R2 is pressed\n");
-    current_ball_conveyor_state = UPPER_GOAL;
   } else {
     pros::lcd::print(2, "No buttons pressed\n");
   }
+}
+
+void handleDrivetrainControl(int LEFT_Y_AXIS, int RIGHT_X_AXIS,
+                             double &left_motor_voltage,
+                             double &right_motor_voltage) {
+  // if the turn value is not large unough, disregard and just use
+  // Arcade control scheme
+  // forward/backward
+  // PROBLEM: when both sticks are pushed, the robot does not move diagonally
+
+  // deadzone for joystick values
+  if ((abs(LEFT_Y_AXIS) < 5 && abs(LEFT_Y_AXIS) > -5) &&
+      abs(RIGHT_X_AXIS) < 5 && abs(RIGHT_X_AXIS) > -5) {
+    left_motor_voltage = 0;
+    right_motor_voltage = 0;
+  }
+
+  // Constants
+  constexpr int MOTOR_MAX = 127;
+
+  // Overflow transfer correction
+  double difference = 0.0;
+
+  // left motor overflow cases
+  if (left_motor_voltage > MOTOR_MAX) {
+    // Left is too positive (forward too strong)
+    difference = (left_motor_voltage - MOTOR_MAX) / 2.0;
+    left_motor_voltage = MOTOR_MAX;
+    right_motor_voltage -= difference; // reduce right to preserve ratio
+  } else if (left_motor_voltage < -MOTOR_MAX) {
+    // Left is too negative (reverse too strong)
+    difference = (left_motor_voltage + MOTOR_MAX) / 2.0;
+    left_motor_voltage = -MOTOR_MAX;
+    right_motor_voltage -= difference; // subtract because left is underflowing
+  }
+
+  // right motor overflow cases
+  if (right_motor_voltage > MOTOR_MAX) {
+    // Right is too positive (forward too strong)
+    difference = (right_motor_voltage - MOTOR_MAX) / 2.0;
+    right_motor_voltage = MOTOR_MAX;
+    left_motor_voltage -= difference;
+  } else if (right_motor_voltage < -MOTOR_MAX) {
+    // Right is too negative (reverse too strong)
+    difference = (right_motor_voltage + MOTOR_MAX) / 2.0;
+    right_motor_voltage = -MOTOR_MAX;
+    left_motor_voltage -= difference;
+  }
+
+  // double check to make sure we are in range
+  if (left_motor_voltage > MOTOR_MAX)
+    left_motor_voltage = MOTOR_MAX;
+  if (left_motor_voltage < -MOTOR_MAX)
+    left_motor_voltage = -MOTOR_MAX;
+  if (right_motor_voltage > MOTOR_MAX)
+    right_motor_voltage = MOTOR_MAX;
+  if (right_motor_voltage < -MOTOR_MAX)
+    right_motor_voltage = -MOTOR_MAX;
 }
 
 /**
@@ -153,9 +254,6 @@ void autonomous() {}
 void opcontrol() {
   while (true) {
 
-    checkControllerButtonPress(); // Check if any controller buttons are pressed
-    updatePneumatics();           // Update pneumatics based on bool/enum states
-
     // init variables for joystick values
     int LEFT_X_AXIS = main_controller.get_analog(
         pros::E_CONTROLLER_ANALOG_LEFT_X); // LEFT STICK X AXIS
@@ -169,58 +267,16 @@ void opcontrol() {
     int RIGHT_Y_AXIS = main_controller.get_analog(
         pros::E_CONTROLLER_ANALOG_RIGHT_Y); // RIGHT STICK Y AXIS
 
-    // if the turn value is not large unough, disregard and just use
-    // Arcade control scheme
-    // forward/backward
-    // PROBLEM: when both sticks are pushed, the robot does not move diagonally
-
     double left_motor_voltage =
         LEFT_Y_AXIS + RIGHT_X_AXIS; // left motor voltage calculation
     double right_motor_voltage =
         LEFT_Y_AXIS - RIGHT_X_AXIS; // right motor voltage calculation
 
-    // Constants
-    constexpr int MOTOR_MAX = 127;
-
-    // Overflow transfer correction
-    double difference = 0.0;
-
-    // left motor overflow cases
-    if (left_motor_voltage > MOTOR_MAX) {
-      // Left is too positive (forward too strong)
-      difference = (left_motor_voltage - MOTOR_MAX) / 2.0;
-      left_motor_voltage = MOTOR_MAX;
-      right_motor_voltage -= difference; // reduce right to preserve ratio
-    } else if (left_motor_voltage < -MOTOR_MAX) {
-      // Left is too negative (reverse too strong)
-      difference = (left_motor_voltage + MOTOR_MAX) / 2.0;
-      left_motor_voltage = -MOTOR_MAX;
-      right_motor_voltage -=
-          difference; // subtract because left is underflowing
-    }
-
-    // right motor overflow cases
-    if (right_motor_voltage > MOTOR_MAX) {
-      // Right is too positive (forward too strong)
-      difference = (right_motor_voltage - MOTOR_MAX) / 2.0;
-      right_motor_voltage = MOTOR_MAX;
-      left_motor_voltage -= difference;
-    } else if (right_motor_voltage < -MOTOR_MAX) {
-      // Right is too negative (reverse too strong)
-      difference = (right_motor_voltage + MOTOR_MAX) / 2.0;
-      right_motor_voltage = -MOTOR_MAX;
-      left_motor_voltage -= difference;
-    }
-
-    // double check to make sure we are in range
-    if (left_motor_voltage > MOTOR_MAX)
-      left_motor_voltage = MOTOR_MAX;
-    if (left_motor_voltage < -MOTOR_MAX)
-      left_motor_voltage = -MOTOR_MAX;
-    if (right_motor_voltage > MOTOR_MAX)
-      right_motor_voltage = MOTOR_MAX;
-    if (right_motor_voltage < -MOTOR_MAX)
-      right_motor_voltage = -MOTOR_MAX;
+    checkControllerButtonPress(); // Check if any controller buttons are pressed
+    updatePneumatics();           // Update pneumatics based on bool/enum states
+    handleDrivetrainControl(
+        LEFT_Y_AXIS, RIGHT_X_AXIS, left_motor_voltage,
+        right_motor_voltage); // Handle drive control and motor
 
     main_controller.print(
         0, 0, "LX: %d LY: %d RX: %d RY: %d", LEFT_X_AXIS, LEFT_Y_AXIS,
@@ -229,7 +285,7 @@ void opcontrol() {
 
     main_controller.print(1, 0, "LVOLT: %.2f RVOLT: %.2f", left_motor_voltage,
                           right_motor_voltage); // print motor voltages to
-                                                // controller screen for testing
+    // controller screen for testing
     left_motors_drivetrain.move_voltage(left_motor_voltage);
     right_motors_drivetrain.move_voltage(right_motor_voltage);
 
