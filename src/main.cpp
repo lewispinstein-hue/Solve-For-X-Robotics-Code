@@ -5,18 +5,16 @@
 #include "pros/misc.h"
 #include "pros/motor_group.hpp"
 
+#define CONTROLLER_R1 E_CONTROLLER_DIGITAL_R1
+#define CONTROLLER_R2 E_CONTROLLER_DIGITAL_R2
+#define CONTROLLER_L1 E_CONTROLLER_DIGITAL_R1
+#define CONTROLLER_L2 E_CONTROLLER_DIGITAL_L2
+#define CONTROLLER_B E_CONTROLLER_DIGITAL_B
+
 #define TOGGLE_DESCORER E_CONTROLLER_DIGITAL_L2 // define toggle descorer button
-
-#define SPIN_FOR_UPPER_GOAL                                                    \
-  E_CONTROLLER_DIGITAL_R2 // define spin for upper goal button
-
-#define SPIN_FOR_MIDDLE_GOAL                                                   \
-  E_CONTROLLER_DIGITAL_R1 // define spin for middle goal button
-
-#define TOGGLE_INTAKE_FUNNEL                                                   \
-  E_CONTROLLER_DIGITAL_B // define toggle funnel button
-
-#define CONTROLLER_L1 E_CONTROLLER_DIGITAL_L1 // define controller L1 button
+#define SPIN_FOR_UPPER_GOAL CONTROLLER_R2  // define spin for upper goal button
+#define SPIN_FOR_MIDDLE_GOAL CONTROLLER_R1 // define spin for middle goal button
+#define TOGGLE_INTAKE_FUNNEL CONTROLLER_B  // define toggle funnel intake button
 
 using namespace std;
 // init drivetrain motor groups and controller
@@ -24,12 +22,6 @@ pros::MotorGroup left_motors_drivetrain({-4, -14, 13});
 pros::MotorGroup right_motors_drivetrain({8, -20, 18});
 pros::Controller main_controller(pros::E_CONTROLLER_MASTER);
 
-// intake and transit motors
-bool transit_engaged = false;
-pros::MotorGroup
-    upper_transit_motor({9, false}); // intake motor (intake and outtake)
-pros::MotorGroup
-    intake_transit_motor({-2, false}); // intake motor (intake and outtake)
 // pneumatics
 bool funnel_engaged = false;
 pros::adi::Pneumatics funnel_pneumatic_right('H', false);
@@ -39,12 +31,19 @@ pros::adi::Pneumatics funnel_pneumatic_left('G', false);
 bool descore_pneumatic_state = false;
 pros::adi::Pneumatics descore_pneumatic('C', true);
 
+// intake and transit motors
+pros::MotorGroup
+    upper_transit_motor({9, false}); // intake motor (intake and outtake)
+pros::MotorGroup
+    intake_transit_motor({-2, false}); // intake motor (intake and outtake)
+// enum for ball conveyer belt
 enum ball_conveyor_state {
   UPPER_GOAL,  // intake balls || spin both up
   MIDDLE_GOAL, // outtake balls || spin INTAKE_TRANSIST up, UPPER_TRANSIT down
   OUTTAKE,     // outtake balls || spin both down
   STOPPED      // stop both motors
 };
+
 ball_conveyor_state current_ball_conveyor_state = STOPPED; // initial state
 
 /**
@@ -187,16 +186,18 @@ void handleDrivetrainControl(int LEFT_Y_AXIS, int RIGHT_X_AXIS,
 
   // Overflow transfer correction
   double difference = 0.0;
+  // easily changable scale factor
+  double scale_factor = 2;
 
   // left motor overflow cases
   if (left_motor_voltage > MOTOR_MAX) {
     // Left is too positive (forward too strong)
-    difference = (left_motor_voltage - MOTOR_MAX) / 2.0;
+    difference = (left_motor_voltage - MOTOR_MAX) / scale_factor;
     left_motor_voltage = MOTOR_MAX;
     right_motor_voltage -= difference; // reduce right to preserve ratio
   } else if (left_motor_voltage < -MOTOR_MAX) {
     // Left is too negative (reverse too strong)
-    difference = (left_motor_voltage + MOTOR_MAX) / 2.0;
+    difference = (left_motor_voltage + MOTOR_MAX) / scale_factor;
     left_motor_voltage = -MOTOR_MAX;
     right_motor_voltage -= difference; // subtract because left is underflowing
   }
@@ -204,12 +205,12 @@ void handleDrivetrainControl(int LEFT_Y_AXIS, int RIGHT_X_AXIS,
   // right motor overflow cases
   if (right_motor_voltage > MOTOR_MAX) {
     // Right is too positive (forward too strong)
-    difference = (right_motor_voltage - MOTOR_MAX) / 2.0;
+    difference = (right_motor_voltage - MOTOR_MAX) / scale_factor;
     right_motor_voltage = MOTOR_MAX;
     left_motor_voltage -= difference;
   } else if (right_motor_voltage < -MOTOR_MAX) {
     // Right is too negative (reverse too strong)
-    difference = (right_motor_voltage + MOTOR_MAX) / 2.0;
+    difference = (right_motor_voltage + MOTOR_MAX) / scale_factor;
     right_motor_voltage = -MOTOR_MAX;
     left_motor_voltage -= difference;
   }
@@ -282,7 +283,7 @@ void opcontrol() {
         0, 0, "LX: %d LY: %d RX: %d RY: %d", LEFT_X_AXIS, LEFT_Y_AXIS,
         RIGHT_X_AXIS,
         RIGHT_Y_AXIS); // print joystick values to controller screen for testing
-
+    main_controller.print(1, 0, "\033[31m");
     main_controller.print(1, 0, "LVOLT: %.2f RVOLT: %.2f", left_motor_voltage,
                           right_motor_voltage); // print motor voltages to
     // controller screen for testing
