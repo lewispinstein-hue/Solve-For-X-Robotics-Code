@@ -5,11 +5,14 @@
 #include "pros/motor_group.hpp"
 #include <iostream>
 
-#define TOGGLE_DESCORER E_CONTROLLER_DIGITAL_L2 //define toggle descorer button
+#define TOGGLE_DESCORER E_CONTROLLER_DIGITAL_L2 // define toggle descorer button
 #define CONTROLLER_L1 E_CONTROLLER_DIGITAL_L1
-#define SPIN_FOR_UPPER_GOAL E_CONTROLLER_DIGITAL_R2 //define spin for upper goal button
-#define SPIN_FOR_MIDDLE_GOAL E_CONTROLLER_DIGITAL_R1 //define spin for middle goal button
-#define TOGGLE_INTAKE_FUNNEL E_CONTROLLER_DIGITAL_B //define toggle funnel button
+#define SPIN_FOR_UPPER_GOAL                                                    \
+  E_CONTROLLER_DIGITAL_R2 // define spin for upper goal button
+#define SPIN_FOR_MIDDLE_GOAL                                                   \
+  E_CONTROLLER_DIGITAL_R1 // define spin for middle goal button
+#define TOGGLE_INTAKE_FUNNEL                                                   \
+  E_CONTROLLER_DIGITAL_B // define toggle funnel button
 
 using namespace std;
 // init drivetrain motor groups and controller
@@ -167,57 +170,64 @@ void opcontrol() {
     // forward/backward
     // PROBLEM: when both sticks are pushed, the robot does not move diagonally
 
-
     double left_motor_voltage =
         LEFT_Y_AXIS + RIGHT_X_AXIS; // left motor voltage calculation
     double right_motor_voltage =
         LEFT_Y_AXIS - RIGHT_X_AXIS; // right motor voltage calculation
 
+    // Constants
+    constexpr int MOTOR_MAX = 127;
 
-          // Constants
-  constexpr int MOTOR_MAX = 127;
+    // Overflow transfer correction
+    double difference = 0.0;
 
-// Overflow transfer correction
-double difference = 0.0;
+    // left motor overflow cases
+    if (left_motor_voltage > MOTOR_MAX) {
+      // Left is too positive (forward too strong)
+      difference = (left_motor_voltage - MOTOR_MAX) / 2.0;
+      left_motor_voltage = MOTOR_MAX;
+      right_motor_voltage -= difference; // reduce right to preserve ratio
+    } else if (left_motor_voltage < -MOTOR_MAX) {
+      // Left is too negative (reverse too strong)
+      difference = (left_motor_voltage + MOTOR_MAX) / 2.0;
+      left_motor_voltage = -MOTOR_MAX;
+      right_motor_voltage -=
+          difference; // subtract because left is underflowing
+    }
 
-// left motor overflow cases
-if (left_motor_voltage > MOTOR_MAX) {
-    // Left is too positive (forward too strong)
-    difference = (left_motor_voltage - MOTOR_MAX) / 2.0;
-    left_motor_voltage = MOTOR_MAX;
-    right_motor_voltage -= difference;  // reduce right to preserve ratio
-}
-else if (left_motor_voltage < -MOTOR_MAX) {
-    // Left is too negative (reverse too strong)
-    difference = (left_motor_voltage + MOTOR_MAX) / 2.0;
-    left_motor_voltage = -MOTOR_MAX;
-    right_motor_voltage -= difference;  // subtract because left is underflowing
-}
+    // right motor overflow cases
+    if (right_motor_voltage > MOTOR_MAX) {
+      // Right is too positive (forward too strong)
+      difference = (right_motor_voltage - MOTOR_MAX) / 2.0;
+      right_motor_voltage = MOTOR_MAX;
+      left_motor_voltage -= difference;
+    } else if (right_motor_voltage < -MOTOR_MAX) {
+      // Right is too negative (reverse too strong)
+      difference = (right_motor_voltage + MOTOR_MAX) / 2.0;
+      right_motor_voltage = -MOTOR_MAX;
+      left_motor_voltage -= difference;
+    }
 
-// right motor overflow cases
-if (right_motor_voltage > MOTOR_MAX) {
-    // Right is too positive (forward too strong)
-    difference = (right_motor_voltage - MOTOR_MAX) / 2.0;
-    right_motor_voltage = MOTOR_MAX;
-    left_motor_voltage -= difference;
-}
-else if (right_motor_voltage < -MOTOR_MAX) {
-    // Right is too negative (reverse too strong)
-    difference = (right_motor_voltage + MOTOR_MAX) / 2.0;
-    right_motor_voltage = -MOTOR_MAX;
-    left_motor_voltage -= difference;
-}
-
-// double check to make sure we are in range
-if (left_motor_voltage > MOTOR_MAX)  left_motor_voltage = MOTOR_MAX;
-if (left_motor_voltage < -MOTOR_MAX) left_motor_voltage = -MOTOR_MAX;
-if (right_motor_voltage > MOTOR_MAX) right_motor_voltage = MOTOR_MAX;
-if (right_motor_voltage < -MOTOR_MAX) right_motor_voltage = -MOTOR_MAX;
+    // double check to make sure we are in range
+    if (left_motor_voltage > MOTOR_MAX)
+      left_motor_voltage = MOTOR_MAX;
+    if (left_motor_voltage < -MOTOR_MAX)
+      left_motor_voltage = -MOTOR_MAX;
+    if (right_motor_voltage > MOTOR_MAX)
+      right_motor_voltage = MOTOR_MAX;
+    if (right_motor_voltage < -MOTOR_MAX)
+      right_motor_voltage = -MOTOR_MAX;
 
     main_controller.print(
         0, 0, "LX: %d LY: %d RX: %d RY: %d", LEFT_X_AXIS, LEFT_Y_AXIS,
         RIGHT_X_AXIS,
         RIGHT_Y_AXIS); // print joystick values to controller screen for testing
+
+    main_controller.print(1, 0, "LVOLT: %.2f RVOLT: %.2f", left_motor_voltage,
+                          right_motor_voltage); // print motor voltages to
+                                                // controller screen for testing
+    left_motors_drivetrain.move_voltage(left_motor_voltage);
+    right_motors_drivetrain.move_voltage(right_motor_voltage);
 
     pros::delay(20); // Run for 20 ms then update
   }
