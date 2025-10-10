@@ -142,8 +142,6 @@ void checkControllerButtonPress() {
     // for toggleable button
     if (current_ball_conveyor_state == MIDDLE_GOAL) {
       current_ball_conveyor_state = STOPPED;
-    } else if (current_ball_conveyor_state == STOPPED) {
-      current_ball_conveyor_state = MIDDLE_GOAL;
     } else {
       current_ball_conveyor_state = MIDDLE_GOAL;
     }
@@ -152,18 +150,15 @@ void checkControllerButtonPress() {
     // for toggelable button
     if (current_ball_conveyor_state == UPPER_GOAL) {
       current_ball_conveyor_state = STOPPED;
-    } else if (current_ball_conveyor_state == STOPPED) {
-      current_ball_conveyor_state = UPPER_GOAL;
     } else {
-      // if in middle goal state, switch to upper goal state
       current_ball_conveyor_state = UPPER_GOAL;
-    }
-  } else {
-    pros::lcd::print(1, "InFunnel: %s | Conveyer state: %s",
+    } 
+  }
+  pros::lcd::print(1, "InFunnel: %s | Conveyer state: %s",
                      funnel_engaged ? true : false,
                      current_ball_conveyor_state ? true : false);
-  }
 }
+
 
 double expo_joystick(int input) {
   // function to apply an exponential curve to the input.
