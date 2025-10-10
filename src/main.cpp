@@ -4,23 +4,20 @@
 #include "pros/llemu.hpp"
 #include "pros/misc.h"
 #include "pros/motor_group.hpp"
+#include "pros/motors.h"
 
 #define EXPONENT 1.9 // the exponential curve for the joystick inputs
 
 // defines for controller buttons for readability
 #define CONTROLLER_R1 E_CONTROLLER_DIGITAL_R1
 #define CONTROLLER_R2 E_CONTROLLER_DIGITAL_R2
-#define CONTROLLER_L1 E_CONTROLLER_DIGITAL_R1
+#define CONTROLLER_L1 E_CONTROLLER_DIGITAL_L1
 #define CONTROLLER_L2 E_CONTROLLER_DIGITAL_L2
 #define CONTROLLER_B E_CONTROLLER_DIGITAL_B
 
-#define SPIN_FOR_UPPER_GOAL CONTROLLER_R2  // define spin for upper goal button
-#define SPIN_FOR_MIDDLE_GOAL CONTROLLER_R1 // define spin for middle goal button
-#define TOGGLE_INTAKE_FUNNEL CONTROLLER_B  // define toggle funnel intake button
-
 using namespace std;
 // init drivetrain motor groups and controller
-pros::MotorGroup left_motors_drivetrain({-4, -14, 13});
+pros::MotorGroup left_motors_drivetrain({-6, -14, 13});
 pros::MotorGroup right_motors_drivetrain({8, -20, 18});
 pros::Controller main_controller(pros::E_CONTROLLER_MASTER);
 
@@ -30,8 +27,8 @@ pros::adi::Pneumatics funnel_pneumatic_right('H', false);
 pros::adi::Pneumatics funnel_pneumatic_left('G', false);
 
 // intake and transit motors
-pros::MotorGroup upper_transit_motor({7});
-pros::MotorGroup intake_transit_motor({-2});
+pros::Motor upper_transit_motor(7);
+pros::Motor intake_transit_motor(-2);
 
 // enum for ball conveyer belt
 enum ball_conveyor_state {
@@ -62,7 +59,7 @@ void initialize() {
 
   pros::lcd::initialize();
   pros::lcd::set_text(1, "Hello PROS User!");
-  ball_conveyor_state current_ball_conveyor_state = STOPPED; // initial state
+  current_ball_conveyor_state = STOPPED; // initial state
 }
 
 /**
@@ -71,8 +68,8 @@ void initialize() {
  * the robot is enabled, this task will exit.
  */
 void disabled() {
-  ball_conveyor_state current_ball_conveyor_state = STOPPED;
-  funnel_engaged = false;
+  // current_ball_conveyor_state = STOPPED;
+  // funnel_engaged = false;
 }
 
 /**
@@ -134,30 +131,35 @@ void updateBallConveyorMotors() {
 
 // function to check if any controller buttons are pressed
 void checkControllerButtonPress() {
-  if (main_controller.get_digital_new_press(pros::TOGGLE_INTAKE_FUNNEL)) {
+  if (main_controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_B)) {
     funnel_engaged = !funnel_engaged;
-
-  } else if (main_controller.get_digital_new_press(
-                 pros::SPIN_FOR_MIDDLE_GOAL)) {
+  } 
+  else if (main_controller.get_digital_new_press(
+                 pros::CONTROLLER_R1)) {
     // for toggleable button
     if (current_ball_conveyor_state == MIDDLE_GOAL) {
       current_ball_conveyor_state = STOPPED;
+    } else if (current_ball_conveyor_state == STOPPED) {
+      current_ball_conveyor_state = MIDDLE_GOAL;
     } else {
       current_ball_conveyor_state = MIDDLE_GOAL;
     }
-
-  } else if (main_controller.get_digital_new_press(pros::SPIN_FOR_UPPER_GOAL)) {
+  } else if (main_controller.get_digital_new_press(pros::CONTROLLER_R2)) {
     // for toggelable button
     if (current_ball_conveyor_state == UPPER_GOAL) {
       current_ball_conveyor_state = STOPPED;
+    } else if (current_ball_conveyor_state == STOPPED) {
+      current_ball_conveyor_state = UPPER_GOAL;
     } else {
+      // if in middle goal state, switch to upper goal state
       current_ball_conveyor_state = UPPER_GOAL;
     }
   }
-  pros::lcd::print(1, "InFunnel: %s | Conveyer state: %s",
-                   funnel_engaged ? true : false,
-                   current_ball_conveyor_state ? true : false);
-}
+    pros::lcd::print(0, "InFunnel: %s | Conveyer state: %s",
+                     funnel_engaged ? "true" : "false",
+                     current_ball_conveyor_state ? "true" : "false");
+    }
+
 
 double expo_joystick(int input) {
   // function to apply an exponential curve to the input.
@@ -165,7 +167,6 @@ double expo_joystick(int input) {
   double normalized = (double)input / 127.0;       // normalize to [-1, 1]
   double curved = pow(fabs(normalized), EXPONENT); // apply exponential curve
   curved = curved * (normalized >= 0 ? 1 : -1);    // restore sign
-
   // if the output would be too large, dont change the number and pass it off to
   // the difference calculations
   if (curved >= 1 || curved <= -1) {
@@ -183,7 +184,7 @@ void handleDrivetrainControl(int LEFT_Y_AXIS, int RIGHT_X_AXIS,
   // clockwise/counter-clockwise on right stick X
 
   // deadzone for joystick values
-  if (fabs(LEFT_Y_AXIS) < 5)
+  if (abs(LEFT_Y_AXIS) < 5)
     LEFT_Y_AXIS = 0;
   if (abs(RIGHT_X_AXIS) < 5)
     RIGHT_X_AXIS = 0;
@@ -193,7 +194,7 @@ void handleDrivetrainControl(int LEFT_Y_AXIS, int RIGHT_X_AXIS,
   // Overflow transfer correction
   double difference = 0.0;
   // easily changable scale factor
-  double scale_factor = 2;
+  double scale_factor = 1.7;
 
   // left motor overflow cases
   if (left_motor_voltage > MOTOR_MAX) {
@@ -280,7 +281,7 @@ void opcontrol() {
         LEFT_Y_AXIS, RIGHT_X_AXIS, left_motor_voltage,
         right_motor_voltage); // Handle drive control and motor calc
 
-    pros::lcd::print(0, "LV:%f|RV:%f", left_motor_voltage, right_motor_voltage);
+    printf(0, "LV:%f|RV:%f", left_motor_voltage, right_motor_voltage);
 
     // print joystick values to controller screen for testing
     // controller screen for testing
