@@ -159,8 +159,9 @@ void checkControllerButtonPress() {
       current_ball_conveyor_state = UPPER_GOAL;
     }
   } else {
-    pros::lcd::print(1, "Pneumatic: %d | InFunnel: %d | Conveyer state: %d",
-                     funnel_engaged, current_ball_conveyor_state);
+    pros::lcd::print(1, "InFunnel: %s | Conveyer state: %s",
+                     funnel_engaged ? true : false,
+                     current_ball_conveyor_state ? true : false);
   }
 }
 
@@ -188,7 +189,7 @@ void handleDrivetrainControl(int LEFT_Y_AXIS, int RIGHT_X_AXIS,
   // clockwise/counter-clockwise on right stick X
 
   // deadzone for joystick values
-  if (abs(LEFT_Y_AXIS) < 5)
+  if (fabs(LEFT_Y_AXIS) < 5)
     LEFT_Y_AXIS = 0;
   if (abs(RIGHT_X_AXIS) < 5)
     RIGHT_X_AXIS = 0;
@@ -292,7 +293,7 @@ void opcontrol() {
     updateBallConveyorMotors();
     handleDrivetrainControl(
         LEFT_Y_AXIS, RIGHT_X_AXIS, left_motor_voltage,
-        right_motor_voltage); // Handle drive control and motor
+        right_motor_voltage); // Handle drive control and motor calc
 
     pros::lcd::print(0, "LV:%f|RV:%f", left_motor_voltage, right_motor_voltage);
 
