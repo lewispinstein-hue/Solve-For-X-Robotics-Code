@@ -152,13 +152,12 @@ void checkControllerButtonPress() {
       current_ball_conveyor_state = STOPPED;
     } else {
       current_ball_conveyor_state = UPPER_GOAL;
-    } 
+    }
   }
   pros::lcd::print(1, "InFunnel: %s | Conveyer state: %s",
-                     funnel_engaged ? true : false,
-                     current_ball_conveyor_state ? true : false);
+                   funnel_engaged ? true : false,
+                   current_ball_conveyor_state ? true : false);
 }
-
 
 double expo_joystick(int input) {
   // function to apply an exponential curve to the input.
