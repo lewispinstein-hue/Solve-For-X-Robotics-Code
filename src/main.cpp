@@ -5,6 +5,7 @@
 #include "pros/misc.h"
 #include "pros/motor_group.hpp"
 
+#define EXPONENT 1.9 // the exponential curve for the joystick inputs
 
 // defines for controller buttons for readability
 #define CONTROLLER_R1 E_CONTROLLER_DIGITAL_R1
@@ -98,6 +99,14 @@ void updatePneumatics() {
   }
 }
 
+double custom_clamp(double input, double MIN_VALUE, double MAX_VALUE) {
+  if (input < MIN_VALUE)
+    return MIN_VALUE;
+  if (input > MAX_VALUE)
+    return MAX_VALUE;
+  return input;
+}
+
 void updateBallConveyorMotors() {
   switch (current_ball_conveyor_state) {
   case UPPER_GOAL:
@@ -122,6 +131,7 @@ void updateBallConveyorMotors() {
     break;
   }
 }
+
 // function to check if any controller buttons are pressed
 void checkControllerButtonPress() {
   if (main_controller.get_digital_new_press(pros::TOGGLE_INTAKE_FUNNEL)) {
@@ -145,8 +155,8 @@ void checkControllerButtonPress() {
     } else if (current_ball_conveyor_state == STOPPED) {
       current_ball_conveyor_state = UPPER_GOAL;
     } else {
-      current_ball_conveyor_state =
-          UPPER_GOAL; // if in middle goal state, switch to upper goal state
+      // if in middle goal state, switch to upper goal state
+      current_ball_conveyor_state = UPPER_GOAL;
     }
   } else {
     pros::lcd::print(1, "Pneumatic: %d | InFunnel: %d | Conveyer state: %d",
@@ -154,19 +164,34 @@ void checkControllerButtonPress() {
   }
 }
 
+double expo_joystick(int input) {
+  // function to apply an exponential curve to the input.
+  // is is applyed to the fowards and turn values in opcontrol()
+  double normalized = (double)input / 127.0;       // normalize to [-1, 1]
+  double curved = pow(fabs(normalized), EXPONENT); // apply exponential curve
+  curved = curved * (normalized >= 0 ? 1 : -1);    // restore sign
+
+  // if the output would be too large, dont change the number and pass it off to
+  // the difference calculations
+  if (curved >= 1 || curved <= -1) {
+    return input;
+  }
+  return curved * 127.0; // scale back to motor range
+}
+
 void handleDrivetrainControl(int LEFT_Y_AXIS, int RIGHT_X_AXIS,
                              double &left_motor_voltage,
                              double &right_motor_voltage) {
   // if the turn value is not large unough, disregard and just use
   // Arcade control scheme
-  // forward/backward
+  // forward/backward on left stick Y
+  // clockwise/counter-clockwise on right stick X
 
   // deadzone for joystick values
-  if ((abs(LEFT_Y_AXIS) < 5 && abs(LEFT_Y_AXIS) > -5) &&
-      abs(RIGHT_X_AXIS) < 5 && abs(RIGHT_X_AXIS) > -5) {
-    left_motor_voltage = 0;
-    right_motor_voltage = 0;
-  }
+  if (abs(LEFT_Y_AXIS) < 5)
+    LEFT_Y_AXIS = 0;
+  if (abs(RIGHT_X_AXIS) < 5)
+    RIGHT_X_AXIS = 0;
 
   // Constants
   constexpr int MOTOR_MAX = 127;
@@ -180,12 +205,12 @@ void handleDrivetrainControl(int LEFT_Y_AXIS, int RIGHT_X_AXIS,
     // Left is too positive (forward too strong)
     difference = (left_motor_voltage - MOTOR_MAX) / scale_factor;
     left_motor_voltage = MOTOR_MAX;
-    right_motor_voltage -= difference; // reduce right to preserve ratio
+    right_motor_voltage += difference; // reduce right to preserve ratio
   } else if (left_motor_voltage < -MOTOR_MAX) {
     // Left is too negative (reverse too strong)
     difference = (left_motor_voltage + MOTOR_MAX) / scale_factor;
     left_motor_voltage = -MOTOR_MAX;
-    right_motor_voltage -= difference; // subtract because left is underflowing
+    right_motor_voltage += difference; // subtract because left is underflowing
   }
 
   // right motor overflow cases
@@ -193,12 +218,12 @@ void handleDrivetrainControl(int LEFT_Y_AXIS, int RIGHT_X_AXIS,
     // Right is too positive (forward too strong)
     difference = (right_motor_voltage - MOTOR_MAX) / scale_factor;
     right_motor_voltage = MOTOR_MAX;
-    left_motor_voltage -= difference;
+    left_motor_voltage += difference;
   } else if (right_motor_voltage < -MOTOR_MAX) {
     // Right is too negative (reverse too strong)
     difference = (right_motor_voltage + MOTOR_MAX) / scale_factor;
     right_motor_voltage = -MOTOR_MAX;
-    left_motor_voltage -= difference;
+    left_motor_voltage += difference;
   }
 
   // double check to make sure we are in range
@@ -210,6 +235,10 @@ void handleDrivetrainControl(int LEFT_Y_AXIS, int RIGHT_X_AXIS,
     right_motor_voltage = MOTOR_MAX;
   if (right_motor_voltage < -MOTOR_MAX)
     right_motor_voltage = -MOTOR_MAX;
+
+  left_motor_voltage = custom_clamp(left_motor_voltage, -MOTOR_MAX, MOTOR_MAX);
+  right_motor_voltage =
+      custom_clamp(right_motor_voltage, -MOTOR_MAX, MOTOR_MAX);
 }
 
 /**
@@ -253,10 +282,10 @@ void opcontrol() {
     int RIGHT_Y_AXIS = main_controller.get_analog(
         pros::E_CONTROLLER_ANALOG_RIGHT_Y); // RIGHT STICK Y AXIS
 
-    double left_motor_voltage =
-        LEFT_Y_AXIS + RIGHT_X_AXIS; // left motor voltage calculation
-    double right_motor_voltage =
-        LEFT_Y_AXIS - RIGHT_X_AXIS; // right motor voltage calculation
+    double left_motor_voltage = expo_joystick(
+        LEFT_Y_AXIS + RIGHT_X_AXIS); // left motor voltage calculation
+    double right_motor_voltage = expo_joystick(
+        LEFT_Y_AXIS - RIGHT_X_AXIS); // right motor voltage calculation
 
     checkControllerButtonPress(); // Check if any controller buttons are pressed
     updatePneumatics();           // Update pneumatics based on bool/enum states
@@ -272,6 +301,6 @@ void opcontrol() {
     left_motors_drivetrain.move(left_motor_voltage);
     right_motors_drivetrain.move(right_motor_voltage);
 
-    pros::delay(20); // Run for 20 ms then update to keep cpu happy :)
+    pros::delay(20); // keep update time set to keep cpu happy :)
   }
 }
