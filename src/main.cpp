@@ -133,9 +133,7 @@ void updateBallConveyorMotors() {
 void checkControllerButtonPress() {
   if (main_controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_B)) {
     funnel_engaged = !funnel_engaged;
-  } 
-  else if (main_controller.get_digital_new_press(
-                 pros::CONTROLLER_R1)) {
+  } else if (main_controller.get_digital_new_press(pros::CONTROLLER_R1)) {
     // for toggleable button
     if (current_ball_conveyor_state == MIDDLE_GOAL) {
       current_ball_conveyor_state = STOPPED;
@@ -155,11 +153,10 @@ void checkControllerButtonPress() {
       current_ball_conveyor_state = UPPER_GOAL;
     }
   }
-    pros::lcd::print(0, "InFunnel: %s | Conveyer state: %s",
-                     funnel_engaged ? "true" : "false",
-                     current_ball_conveyor_state ? "true" : "false");
-    }
-
+  printf("Intake funnel Funnel: %s | Conveyer state: %s",
+         funnel_engaged ? "true" : "false",
+         current_ball_conveyor_state ? "true" : "false");
+}
 
 double expo_joystick(int input) {
   // function to apply an exponential curve to the input.
@@ -254,40 +251,51 @@ void autonomous() {}
  * operator control task will be stopped. Re-enabling the robot will restart the
  * task, not resume it from where it left off.
  */
+bool run_main = false;
 void opcontrol() {
   while (true) {
-    // init variables for joystick values
-    int LEFT_X_AXIS = main_controller.get_analog(
-        pros::E_CONTROLLER_ANALOG_LEFT_X); // LEFT STICK X AXIS
+    if (main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_UP) &&
+        main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_LEFT)) {
+      run_main = !run_main;
+    }
+    left_motors_drivetrain.move_relative(100, 100);
 
-    int LEFT_Y_AXIS = main_controller.get_analog(
-        pros::E_CONTROLLER_ANALOG_LEFT_Y); // LEFT STICK Y AXIS
 
-    int RIGHT_X_AXIS = main_controller.get_analog(
-        pros::E_CONTROLLER_ANALOG_RIGHT_X); // RIGHT STICK X AXIS
 
-    int RIGHT_Y_AXIS = main_controller.get_analog(
-        pros::E_CONTROLLER_ANALOG_RIGHT_Y); // RIGHT STICK Y AXIS
+    while (run_main) {
+      // init variables for joystick values
+      int LEFT_X_AXIS = main_controller.get_analog(
+          pros::E_CONTROLLER_ANALOG_LEFT_X); // LEFT STICK X AXIS
 
-    double left_motor_voltage = expo_joystick(
-        LEFT_Y_AXIS + RIGHT_X_AXIS); // left motor voltage calculation
-    double right_motor_voltage = expo_joystick(
-        LEFT_Y_AXIS - RIGHT_X_AXIS); // right motor voltage calculation
+      int LEFT_Y_AXIS = main_controller.get_analog(
+          pros::E_CONTROLLER_ANALOG_LEFT_Y); // LEFT STICK Y AXIS
 
-    checkControllerButtonPress(); // Check if any controller buttons are pressed
-    updatePneumatics();           // Update pneumatics based on bool/enum states
-    updateBallConveyorMotors();
-    handleDrivetrainControl(
-        LEFT_Y_AXIS, RIGHT_X_AXIS, left_motor_voltage,
-        right_motor_voltage); // Handle drive control and motor calc
+      int RIGHT_X_AXIS = main_controller.get_analog(
+          pros::E_CONTROLLER_ANALOG_RIGHT_X); // RIGHT STICK X AXIS
 
-    printf(0, "LV:%f|RV:%f", left_motor_voltage, right_motor_voltage);
+      int RIGHT_Y_AXIS = main_controller.get_analog(
+          pros::E_CONTROLLER_ANALOG_RIGHT_Y); // RIGHT STICK Y AXIS
 
-    // print joystick values to controller screen for testing
-    // controller screen for testing
-    left_motors_drivetrain.move(left_motor_voltage);
-    right_motors_drivetrain.move(right_motor_voltage);
+      double left_motor_voltage = expo_joystick(
+          LEFT_Y_AXIS + LEFT_X_AXIS); // left motor voltage calculation
+      double right_motor_voltage = expo_joystick(
+          LEFT_Y_AXIS - LEFT_X_AXIS); // right motor voltage calculation
 
-    pros::delay(20); // keep update time set to keep cpu happy :)
+      checkControllerButtonPress(); // Check if any controller buttons are
+                                    // pressed
+      updatePneumatics(); // Update pneumatics based on bool/enum states
+      updateBallConveyorMotors();
+      handleDrivetrainControl(
+          LEFT_Y_AXIS, RIGHT_X_AXIS, left_motor_voltage,
+          right_motor_voltage); // Handle drive control and motor calc
+
+      printf("LV:%f|RV:%f", left_motor_voltage, right_motor_voltage);
+      // print joystick values to controller screen for testing
+      // controller screen for testing
+      left_motors_drivetrain.move(left_motor_voltage);
+      right_motors_drivetrain.move(right_motor_voltage);
+
+      pros::delay(20); // keep update time set to keep cpu happy :)
+    }
   }
 }
