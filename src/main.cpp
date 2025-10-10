@@ -228,15 +228,6 @@ void handleDrivetrainControl(int LEFT_Y_AXIS, int RIGHT_X_AXIS,
   }
 
   // double check to make sure we are in range
-  if (left_motor_voltage > MOTOR_MAX)
-    left_motor_voltage = MOTOR_MAX;
-  if (left_motor_voltage < -MOTOR_MAX)
-    left_motor_voltage = -MOTOR_MAX;
-  if (right_motor_voltage > MOTOR_MAX)
-    right_motor_voltage = MOTOR_MAX;
-  if (right_motor_voltage < -MOTOR_MAX)
-    right_motor_voltage = -MOTOR_MAX;
-
   left_motor_voltage = custom_clamp(left_motor_voltage, -MOTOR_MAX, MOTOR_MAX);
   right_motor_voltage =
       custom_clamp(right_motor_voltage, -MOTOR_MAX, MOTOR_MAX);
