@@ -19,7 +19,7 @@ Right joystick = left and right
 R1 = spins for middle goal
 R2 = spin for upper goal
 L1 = 
-L2 = extand and retract de-scorer
+L2 = (we removed de-scorer pneumatic)
 x = 
 B = toggle intake 
 
@@ -29,7 +29,6 @@ right dt = 8, -20,18
 1st intake = 2
 last stage = 9 
 
-descorrer = TBD
 scoring arm = TBD
 
 arcade double stick
