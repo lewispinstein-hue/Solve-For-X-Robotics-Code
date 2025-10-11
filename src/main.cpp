@@ -6,15 +6,14 @@
 #include "pros/llemu.hpp"
 #include "pros/misc.h"
 #include "pros/motor_group.hpp"
-#include "pros/motors.hpp"
 #include "pros/rtos.hpp"
 
-//unused headers:
-// #include "pros/rotation.h"
-// #include "pros/rotation.hpp"
-// #include "pros/motors.h"
-// #include "lemlib/chassis/odom.hpp"
-// #include "lemlib/api.hpp"
+// unused headers:
+//  #include "pros/rotation.h"
+//  #include "pros/rotation.hpp"
+//  #include "pros/motors.h"
+//  #include "lemlib/chassis/odom.hpp"
+//  #include "lemlib/api.hpp"
 
 #define EXPONENT 1.9 // the exponential curve for the joystick inputs
 
@@ -27,14 +26,15 @@
 
 using namespace std;
 
-// init drivetrain motor groups and controller
+// init drivetrain motor groups and controller. 
+//sets motor to blue gear cartridge, inits ports, and starts tracking the encoding
+//for the motors in degrees
 pros::MotorGroup left_motors_drivetrain({-6, 13, -14},
-                                        pros::v5::MotorGears::blue,
-                                        pros::v5::MotorUnits::rotations);
+                                        pros::v5::MotorGears::rpm_600,
+                                        pros::v5::MotorUnits::degrees);
 pros::MotorGroup right_motors_drivetrain({8, 18, -20},
-                                         pros::v5::MotorGears::blue,
-                                         pros::v5::MotorUnits::rotations);
-
+                                         pros::v5::MotorGears::rpm_600,
+                                         pros::v5::MotorUnits::degrees);
 pros::Controller main_controller(pros::E_CONTROLLER_MASTER);
 
 // pneumatics
@@ -49,9 +49,6 @@ pros::Motor intake_transit_motor(-2);
 // Lemlib initialization
 pros::Imu inertial_sensor(10); // adjust port when we get sensor
 
-// lemlib::ControllerSettings lateral_settings(12, 0, 2, 0, 1);
-// lemlib::ControllerSettings angular_settings(3, 0, 12, 0, 1);
-
 lemlib::ControllerSettings lateralSettings(12, 0, 2, // kP, kI, kD
                                            0,      // integral anti-windup range
                                            1, 100, // small error range, timeout
@@ -60,6 +57,13 @@ lemlib::ControllerSettings lateralSettings(12, 0, 2, // kP, kI, kD
 );
 
 lemlib::ControllerSettings angularSettings(3, 0, 12, 0, 1, 100, 3, 500, 5);
+
+lemlib::OdomSensors odomSensors(nullptr,         // vertical1
+                                nullptr,         // vertical2
+                                nullptr,         // horizontal1
+                                nullptr,         // horizontal2
+                                &inertial_sensor // IMU
+);
 
 lemlib::Drivetrain main_drivetrain(
     &left_motors_drivetrain,  // left motor group
@@ -70,13 +74,8 @@ lemlib::Drivetrain main_drivetrain(
     2    // chase power (leave as 2 unless tuning)
 );
 
-lemlib::OdomSensors odomSensors(
-    nullptr, // vertical1
-    nullptr, // vertical2
-    nullptr, // horizontal1
-    nullptr, // horizontal2
-    &inertial_sensor // IMU
-);
+lemlib::Chassis chassis(main_drivetrain, lateralSettings, angularSettings,
+                        odomSensors);
 
 // enum for ball conveyer belt
 enum ball_conveyor_state {
@@ -102,12 +101,14 @@ ball_conveyor_state current_ball_conveyor_state;
  * to keep execution time for this mode under a few seconds.
  */
 void initialize() {
+  chassis.resetLocalPosition();
   left_motors_drivetrain.set_brake_mode(pros::MotorBrake::brake);
   right_motors_drivetrain.set_brake_mode(pros::MotorBrake::brake);
 
-  pros::lcd::initialize();
-  pros::lcd::set_text(1, "Hello PROS User!");
   current_ball_conveyor_state = STOPPED; // initial state
+  funnel_engaged = false;
+
+  pros::lcd::initialize();
 }
 
 /**
@@ -129,7 +130,10 @@ void disabled() {
  * This task will exit when the robot is enabled and autonomous or opcontrol
  * starts.
  */
-void competition_initialize() {}
+void competition_initialize() {
+  chassis.resetLocalPosition();
+}
+
 
 // function to update pneumatics based on states
 void updatePneumatics() {
