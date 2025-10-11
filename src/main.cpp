@@ -1,10 +1,10 @@
 #include "main.h"
+#include "lemlib/api.hpp"
 #include "liblvgl/llemu.hpp"
 #include "pros/abstract_motor.hpp"
 #include "pros/llemu.hpp"
 #include "pros/misc.h"
 #include "pros/motor_group.hpp"
-#include "pros/motors.h"
 
 #define EXPONENT 1.9 // the exponential curve for the joystick inputs
 
