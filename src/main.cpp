@@ -1,10 +1,20 @@
 #include "main.h"
-#include "lemlib/api.hpp"
+#include "lemlib/chassis/chassis.hpp"
 #include "liblvgl/llemu.hpp"
 #include "pros/abstract_motor.hpp"
+#include "pros/adi.hpp"
 #include "pros/llemu.hpp"
 #include "pros/misc.h"
 #include "pros/motor_group.hpp"
+#include "pros/motors.hpp"
+#include "pros/rtos.hpp"
+
+//unused headers:
+// #include "pros/rotation.h"
+// #include "pros/rotation.hpp"
+// #include "pros/motors.h"
+// #include "lemlib/chassis/odom.hpp"
+// #include "lemlib/api.hpp"
 
 #define EXPONENT 1.9 // the exponential curve for the joystick inputs
 
@@ -16,9 +26,15 @@
 #define CONTROLLER_B E_CONTROLLER_DIGITAL_B
 
 using namespace std;
+
 // init drivetrain motor groups and controller
-pros::MotorGroup left_motors_drivetrain({-6, -14, 13});
-pros::MotorGroup right_motors_drivetrain({8, -20, 18});
+pros::MotorGroup left_motors_drivetrain({-6, 13, -14},
+                                        pros::v5::MotorGears::blue,
+                                        pros::v5::MotorUnits::rotations);
+pros::MotorGroup right_motors_drivetrain({8, 18, -20},
+                                         pros::v5::MotorGears::blue,
+                                         pros::v5::MotorUnits::rotations);
+
 pros::Controller main_controller(pros::E_CONTROLLER_MASTER);
 
 // pneumatics
@@ -29,6 +45,38 @@ pros::adi::Pneumatics funnel_pneumatic_left('G', false);
 // intake and transit motors
 pros::Motor upper_transit_motor(7);
 pros::Motor intake_transit_motor(-2);
+
+// Lemlib initialization
+pros::Imu inertial_sensor(10); // adjust port when we get sensor
+
+// lemlib::ControllerSettings lateral_settings(12, 0, 2, 0, 1);
+// lemlib::ControllerSettings angular_settings(3, 0, 12, 0, 1);
+
+lemlib::ControllerSettings lateralSettings(12, 0, 2, // kP, kI, kD
+                                           0,      // integral anti-windup range
+                                           1, 100, // small error range, timeout
+                                           3, 500, // large error range, timeout
+                                           5       // max acceleration (slew)
+);
+
+lemlib::ControllerSettings angularSettings(3, 0, 12, 0, 1, 100, 3, 500, 5);
+
+lemlib::Drivetrain main_drivetrain(
+    &left_motors_drivetrain,  // left motor group
+    &right_motors_drivetrain, // right motor group
+    11.5, // track width in inches (measure center-to-center of wheels)
+    lemlib::Omniwheel::NEW_325, // 3.25" omni wheels
+    600, // wheel RPM (green cartridge = 200, blue = 600, red = 100)
+    2    // chase power (leave as 2 unless tuning)
+);
+
+lemlib::OdomSensors odomSensors(
+    nullptr, // vertical1
+    nullptr, // vertical2
+    nullptr, // horizontal1
+    nullptr, // horizontal2
+    &inertial_sensor // IMU
+);
 
 // enum for ball conveyer belt
 enum ball_conveyor_state {
@@ -259,8 +307,6 @@ void opcontrol() {
       run_main = !run_main;
     }
     left_motors_drivetrain.move_relative(100, 100);
-
-
 
     while (run_main) {
       // init variables for joystick values
