@@ -15,16 +15,26 @@
 //  #include "lemlib/chassis/odom.hpp"
 //  #include "lemlib/api.hpp"
 
-#define EXPONENT 1.9 // the exponential curve for the joystick inputs
+constexpr double EXPONENT =
+    1.9; // the exponential curve for the joystick inputs
+constexpr double scale_factor = 1.6; // define scale factor for Pid
 
 // defines for controller buttons for readability
-#define CONTROLLER_R1 E_CONTROLLER_DIGITAL_R1
-#define CONTROLLER_R2 E_CONTROLLER_DIGITAL_R2
-#define CONTROLLER_L1 E_CONTROLLER_DIGITAL_L1
-#define CONTROLLER_L2 E_CONTROLLER_DIGITAL_L2
-#define CONTROLLER_B E_CONTROLLER_DIGITAL_B
+#define CONTROLLER_R1 pros::E_CONTROLLER_DIGITAL_R1
+#define CONTROLLER_R2 pros::E_CONTROLLER_DIGITAL_R2
+#define CONTROLLER_L1 pros::E_CONTROLLER_DIGITAL_L1
+#define CONTROLLER_L2 pros::E_CONTROLLER_DIGITAL_L2
+#define CONTROLLER_B pros::E_CONTROLLER_DIGITAL_B
+#define CONTROLLER_LEFT pros::E_CONTROLLER_DIGITAL_LEFT
+#define CONTROLLER_RIGHT pros::E_CONTROLLER_DIGITAL_RIGHT
+#define CONTROLLER_UP pros::E_CONTROLLER_DIGITAL_UP
+#define CONTROLLER_DOWN pros::E_CONTROLLER_DIGITAL_DOWN
 
-using namespace std;
+// define joysticks
+#define CONTROLLER_LEFT_X pros::E_CONTROLLER_ANALOG_LEFT_X
+#define CONTROLLER_LEFT_Y pros::E_CONTROLLER_ANALOG_LEFT_Y
+#define CONTROLLER_RIGHT_X pros::E_CONTROLLER_ANALOG_RIGHT_X
+#define CONTROLLER_RIGHT_Y pros::E_CONTROLLER_ANALOG_RIGHT_Y
 
 // init drivetrain motor groups and controller.
 // sets motor to blue gear cartridge, inits ports, and starts tracking the
@@ -88,13 +98,6 @@ enum ball_conveyor_state {
 ball_conveyor_state current_ball_conveyor_state;
 
 /**
- * A callback function for LLEMU's center button.
- *
- * When this callback is fired, it will toggle line 2 of the LCD text between
- * "I was pressed!" and nothing.
- */
-
-/**
  * Runs initialization code. This occurs as soon as the program is started.
  *
  * All other competition modes are blocked by initialize; it is recommended
@@ -137,20 +140,12 @@ void updatePneumatics() {
   if (funnel_engaged) {
     // engage funnel pneumatics when true
     funnel_pneumatic_right.set_value(true);
-    funnel_pneumatic_left.set_value(true);
+    funnel_pneumatic_left.set_value(false);
   } else if (!funnel_engaged) {
     // disengage funnel pneumatics when false
     funnel_pneumatic_right.set_value(false);
-    funnel_pneumatic_left.set_value(false);
+    funnel_pneumatic_left.set_value(true);
   }
-}
-
-double custom_clamp(double input, double MIN_VALUE, double MAX_VALUE) {
-  if (input < MIN_VALUE)
-    return MIN_VALUE;
-  if (input > MAX_VALUE)
-    return MAX_VALUE;
-  return input;
 }
 
 void updateBallConveyorMotors() {
@@ -180,9 +175,9 @@ void updateBallConveyorMotors() {
 
 // function to check if any controller buttons are pressed
 void checkControllerButtonPress() {
-  if (main_controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_B)) {
+  if (main_controller.get_digital_new_press(CONTROLLER_B)) {
     funnel_engaged = !funnel_engaged;
-  } else if (main_controller.get_digital_new_press(pros::CONTROLLER_R1)) {
+  } else if (main_controller.get_digital_new_press(CONTROLLER_R1)) {
     // for toggleable button
     if (current_ball_conveyor_state == MIDDLE_GOAL) {
       current_ball_conveyor_state = STOPPED;
@@ -191,7 +186,7 @@ void checkControllerButtonPress() {
     } else {
       current_ball_conveyor_state = MIDDLE_GOAL;
     }
-  } else if (main_controller.get_digital_new_press(pros::CONTROLLER_R2)) {
+  } else if (main_controller.get_digital_new_press(CONTROLLER_R2)) {
     // for toggelable button
     if (current_ball_conveyor_state == UPPER_GOAL) {
       current_ball_conveyor_state = STOPPED;
@@ -221,6 +216,21 @@ double expo_joystick(int input) {
   return curved * 127.0; // scale back to motor range
 }
 
+double custom_clamp(double input, double MIN_VALUE, double MAX_VALUE) {
+  if (input < MIN_VALUE)
+    return MIN_VALUE;
+  if (input > MAX_VALUE)
+    return MAX_VALUE;
+  return input;
+}
+
+double slewLimit(double target, double prev, double maxDelta) {
+  double delta = target - prev;
+  if (fabs(delta) > maxDelta)
+    delta = (delta > 0) ? maxDelta : -maxDelta;
+  return prev + delta;
+}
+
 void handleDrivetrainControl(int LEFT_Y_AXIS, int RIGHT_X_AXIS,
                              double &left_motor_voltage,
                              double &right_motor_voltage) {
@@ -232,20 +242,23 @@ void handleDrivetrainControl(int LEFT_Y_AXIS, int RIGHT_X_AXIS,
   // deadzone for joystick values
   if (abs(LEFT_Y_AXIS) < 5) {
     LEFT_Y_AXIS = 0;
-  left_motors_drivetrain.set_brake_mode(pros::E_MOTOR_BRAKE_BRAKE); 
-  left_motors_drivetrain.move(0);
+    left_motors_drivetrain.set_brake_mode(pros::E_MOTOR_BRAKE_BRAKE);
+    left_motors_drivetrain.move(0);
   }
   if (abs(RIGHT_X_AXIS) < 5) {
     RIGHT_X_AXIS = 0;
+    right_motors_drivetrain.set_brake_mode(pros::E_MOTOR_BRAKE_BRAKE);
     right_motors_drivetrain.move(0);
-    right_motors_drivetrain.set_brake_mode(pros::E_MOTOR_BRAKE_BRAKE); 
   }
   // Constants
   constexpr int MOTOR_MAX = 127;
   // Overflow transfer correction
   double difference = 0.0;
-  // easily changable scale factor
-  double scale_factor = 1.7;
+  // slew rate
+  constexpr double MAX_DELTA = 8.0;
+  // comparing cases for slew
+  static double prev_left_voltage = 0.0;
+  static double prev_right_voltage = 0.0;
 
   // left motor overflow cases
   if (left_motor_voltage > MOTOR_MAX) {
@@ -272,6 +285,15 @@ void handleDrivetrainControl(int LEFT_Y_AXIS, int RIGHT_X_AXIS,
     right_motor_voltage = -MOTOR_MAX;
     left_motor_voltage += difference;
   }
+
+  // slew control
+  left_motor_voltage =
+      slewLimit(left_motor_voltage, prev_left_voltage, MAX_DELTA);
+  right_motor_voltage =
+      slewLimit(right_motor_voltage, prev_right_voltage, MAX_DELTA);
+
+  prev_left_voltage = left_motor_voltage;
+  prev_right_voltage = right_motor_voltage;
 
   // double check to make sure we are in range
   left_motor_voltage = custom_clamp(left_motor_voltage, -MOTOR_MAX, MOTOR_MAX);
@@ -305,55 +327,44 @@ void autonomous() {}
  * operator control task will be stopped. Re-enabling the robot will restart the
  * task, not resume it from where it left off.
  */
-bool run_main = false;
+
 void opcontrol() {
   while (true) {
-    if (main_controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_UP) &&
-        main_controller.get_digital_new_press(
-            pros::E_CONTROLLER_DIGITAL_LEFT)) {
-      run_main = !run_main;
+    // init variables for joystick values
+    int LEFT_X_AXIS = main_controller.get_analog(
+        pros::E_CONTROLLER_ANALOG_LEFT_X); // LEFT STICK X AXIS
 
-    } else if (main_controller.get_digital_new_press(
-                   pros::E_CONTROLLER_DIGITAL_UP) &&
-               main_controller.get_digital_new_press(
-                   pros::E_CONTROLLER_DIGITAL_RIGHT)) {
-      chassis.moveToPoint(5, 5, true);
-    }
+    int LEFT_Y_AXIS =
+        main_controller.get_analog(CONTROLLER_LEFT_Y); // LEFT STICK Y AXIS
 
-    if (run_main) {
-      // init variables for joystick values
-      int LEFT_X_AXIS = main_controller.get_analog(
-          pros::E_CONTROLLER_ANALOG_LEFT_X); // LEFT STICK X AXIS
+    int RIGHT_X_AXIS =
+        main_controller.get_analog(CONTROLLER_RIGHT_X); // RIGHT STICK X AXIS
 
-      int LEFT_Y_AXIS = main_controller.get_analog(
-          pros::E_CONTROLLER_ANALOG_LEFT_Y); // LEFT STICK Y AXIS
+    int RIGHT_Y_AXIS =
+        main_controller.get_analog(CONTROLLER_RIGHT_Y); // RIGHT STICK Y AXIS
 
-      int RIGHT_X_AXIS = main_controller.get_analog(
-          pros::E_CONTROLLER_ANALOG_RIGHT_X); // RIGHT STICK X AXIS
+    double left_motor_voltage = expo_joystick(
+        LEFT_Y_AXIS + RIGHT_X_AXIS); // left motor voltage calculation
+    double right_motor_voltage = expo_joystick(
+        LEFT_Y_AXIS - RIGHT_X_AXIS); // right motor voltage calculation
 
-      int RIGHT_Y_AXIS = main_controller.get_analog(
-          pros::E_CONTROLLER_ANALOG_RIGHT_Y); // RIGHT STICK Y AXIS
+    checkControllerButtonPress(); // Check if any controller buttons are
+                                  // pressed
+    updatePneumatics();           // Update pneumatics based on bool/enum states
+    updateBallConveyorMotors();
+    handleDrivetrainControl(
+        LEFT_Y_AXIS, RIGHT_X_AXIS, left_motor_voltage,
+        right_motor_voltage); // Handle drive control and motor calc
 
-      double left_motor_voltage = expo_joystick(
-          LEFT_Y_AXIS + RIGHT_X_AXIS); // left motor voltage calculation
-      double right_motor_voltage = expo_joystick(
-          LEFT_Y_AXIS - RIGHT_X_AXIS); // right motor voltage calculation
+    main_controller.print(1, 0, "LV:%f|RV:%f", left_motor_voltage,
+                          right_motor_voltage);
 
-      checkControllerButtonPress(); // Check if any controller buttons are
-                                    // pressed
-      updatePneumatics(); // Update pneumatics based on bool/enum states
-      updateBallConveyorMotors();
-      handleDrivetrainControl(
-          LEFT_Y_AXIS, RIGHT_X_AXIS, left_motor_voltage,
-          right_motor_voltage); // Handle drive control and motor calc
+    // print joystick values to controller screen for testing
+    // controller screen for testing
+    left_motors_drivetrain.move(left_motor_voltage);
+    right_motors_drivetrain.move(right_motor_voltage);
 
-      printf("LV:%f|RV:%f", left_motor_voltage, right_motor_voltage);
-      // print joystick values to controller screen for testing
-      // controller screen for testing
-      left_motors_drivetrain.move(left_motor_voltage);
-      right_motors_drivetrain.move(right_motor_voltage);
-
-      pros::delay(20); // keep update time set to keep cpu happy :)
-    }
+    pros::lcd::print(1, "Right Y: %f || Left X: %f", LEFT_Y_AXIS, RIGHT_X_AXIS);
+    pros::delay(20); // keep update time set to keep cpu happy :)
   }
 }
