@@ -1,5 +1,8 @@
 LOG
 
+For the people is robotics class:
+##### I have put the main code in a toggle loop. Push up arrow + left arrow at the same time to toggle between driving mode (and checks) to a debug mode. #####
+
 use Shift+cmd+p and run PROS: Tntegrated Terminal to open a PROS terminal
 
 Biel gmail: bielgiliharik@gmail.com
