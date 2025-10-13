@@ -26,9 +26,9 @@
 
 using namespace std;
 
-// init drivetrain motor groups and controller. 
-//sets motor to blue gear cartridge, inits ports, and starts tracking the encoding
-//for the motors in degrees
+// init drivetrain motor groups and controller.
+// sets motor to blue gear cartridge, inits ports, and starts tracking the
+// encoding for the motors in degrees
 pros::MotorGroup left_motors_drivetrain({-6, 13, -14},
                                         pros::v5::MotorGears::rpm_600,
                                         pros::v5::MotorUnits::degrees);
@@ -130,10 +130,7 @@ void disabled() {
  * This task will exit when the robot is enabled and autonomous or opcontrol
  * starts.
  */
-void competition_initialize() {
-  chassis.resetLocalPosition();
-}
-
+void competition_initialize() { chassis.resetLocalPosition(); }
 
 // function to update pneumatics based on states
 void updatePneumatics() {
@@ -224,6 +221,63 @@ double expo_joystick(int input) {
   return curved * 127.0; // scale back to motor range
 }
 
+void handleDrivetrainControl(int LEFT_Y_AXIS, int RIGHT_X_AXIS,
+                             double &left_motor_voltage,
+                             double &right_motor_voltage) {
+  // if the turn value is not large unough, disregard and just use
+  // Arcade control scheme
+  // forward/backward on left stick Y
+  // clockwise/counter-clockwise on right stick X
+
+  // deadzone for joystick values
+  if (abs(LEFT_Y_AXIS) < 5) {
+    LEFT_Y_AXIS = 0;
+  left_motors_drivetrain.set_brake_mode(pros::E_MOTOR_BRAKE_BRAKE); 
+  left_motors_drivetrain.move(0);
+  }
+  if (abs(RIGHT_X_AXIS) < 5) {
+    RIGHT_X_AXIS = 0;
+    right_motors_drivetrain.move(0);
+    right_motors_drivetrain.set_brake_mode(pros::E_MOTOR_BRAKE_BRAKE); 
+  }
+  // Constants
+  constexpr int MOTOR_MAX = 127;
+  // Overflow transfer correction
+  double difference = 0.0;
+  // easily changable scale factor
+  double scale_factor = 1.7;
+
+  // left motor overflow cases
+  if (left_motor_voltage > MOTOR_MAX) {
+    // Left is too positive (forward too strong)
+    difference = (left_motor_voltage - MOTOR_MAX) / scale_factor;
+    left_motor_voltage = MOTOR_MAX;
+    right_motor_voltage += difference; // reduce right to preserve ratio
+  } else if (left_motor_voltage < -MOTOR_MAX) {
+    // Left is too negative (reverse too strong)
+    difference = (left_motor_voltage + MOTOR_MAX) / scale_factor;
+    left_motor_voltage = -MOTOR_MAX;
+    right_motor_voltage += difference; // subtract because left is underflowing
+  }
+
+  // right motor overflow cases
+  if (right_motor_voltage > MOTOR_MAX) {
+    // Right is too positive (forward too strong)
+    difference = (right_motor_voltage - MOTOR_MAX) / scale_factor;
+    right_motor_voltage = MOTOR_MAX;
+    left_motor_voltage += difference;
+  } else if (right_motor_voltage < -MOTOR_MAX) {
+    // Right is too negative (reverse too strong)
+    difference = (right_motor_voltage + MOTOR_MAX) / scale_factor;
+    right_motor_voltage = -MOTOR_MAX;
+    left_motor_voltage += difference;
+  }
+
+  // double check to make sure we are in range
+  left_motor_voltage = custom_clamp(left_motor_voltage, -MOTOR_MAX, MOTOR_MAX);
+  right_motor_voltage =
+      custom_clamp(right_motor_voltage, -MOTOR_MAX, MOTOR_MAX);
+}
 
 /**
  * Runs the user autonomous code. This function will be started in its own task
@@ -255,11 +309,18 @@ bool run_main = false;
 void opcontrol() {
   while (true) {
     if (main_controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_UP) &&
-        main_controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_LEFT)) {
+        main_controller.get_digital_new_press(
+            pros::E_CONTROLLER_DIGITAL_LEFT)) {
       run_main = !run_main;
+
+    } else if (main_controller.get_digital_new_press(
+                   pros::E_CONTROLLER_DIGITAL_UP) &&
+               main_controller.get_digital_new_press(
+                   pros::E_CONTROLLER_DIGITAL_RIGHT)) {
+      chassis.moveToPoint(5, 5, true);
     }
 
-    while (run_main) {
+    if (run_main) {
       // init variables for joystick values
       int LEFT_X_AXIS = main_controller.get_analog(
           pros::E_CONTROLLER_ANALOG_LEFT_X); // LEFT STICK X AXIS
@@ -273,20 +334,24 @@ void opcontrol() {
       int RIGHT_Y_AXIS = main_controller.get_analog(
           pros::E_CONTROLLER_ANALOG_RIGHT_Y); // RIGHT STICK Y AXIS
 
-      double fowards = expo_joystick(LEFT_Y_AXIS); // left motor voltage calculation
-      double turn = expo_joystick(LEFT_X_AXIS); // right motor voltage calculation
+      double left_motor_voltage = expo_joystick(
+          LEFT_Y_AXIS + RIGHT_X_AXIS); // left motor voltage calculation
+      double right_motor_voltage = expo_joystick(
+          LEFT_Y_AXIS - RIGHT_X_AXIS); // right motor voltage calculation
 
       checkControllerButtonPress(); // Check if any controller buttons are
                                     // pressed
       updatePneumatics(); // Update pneumatics based on bool/enum states
       updateBallConveyorMotors();
-      
-      chassis.arcade(fowards, turn);
+      handleDrivetrainControl(
+          LEFT_Y_AXIS, RIGHT_X_AXIS, left_motor_voltage,
+          right_motor_voltage); // Handle drive control and motor calc
 
-
-      printf("LV:%f|RV:%f", fowards, turn);
+      printf("LV:%f|RV:%f", left_motor_voltage, right_motor_voltage);
       // print joystick values to controller screen for testing
       // controller screen for testing
+      left_motors_drivetrain.move(left_motor_voltage);
+      right_motors_drivetrain.move(right_motor_voltage);
 
       pros::delay(20); // keep update time set to keep cpu happy :)
     }
