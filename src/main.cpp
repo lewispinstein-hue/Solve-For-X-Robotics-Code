@@ -7,11 +7,11 @@
 #include "pros/misc.h"
 #include "pros/motor_group.hpp"
 #include "pros/rtos.hpp"
+#include "pros/motors.h"
 
 // unused headers:
 //  #include "pros/rotation.h"
 //  #include "pros/rotation.hpp"
-//  #include "pros/motors.h"
 //  #include "lemlib/chassis/odom.hpp"
 //  #include "lemlib/api.hpp"
 
@@ -226,11 +226,11 @@ double expo_joystick(int input) {
 void handleDrivetrainControl(int LEFT_Y_AXIS, int RIGHT_X_AXIS,
                              double &left_motor_voltage,
                              double &right_motor_voltage) {
-  // if the turn value is not large unough, disregard and just use
   // Arcade control scheme
   // forward/backward on left stick Y
   // clockwise/counter-clockwise on right stick X
 
+  // if the turn value is not large unough, disregard
   // deadzone for joystick values
   if (abs(LEFT_Y_AXIS) < 5) {
     LEFT_Y_AXIS = 0;
@@ -309,6 +309,7 @@ void autonomous() {}
 bool run_main = false;
 void opcontrol() {
   while (true) {
+  pros::lcd::print(0,  "Main running: %s", run_main ? "True" : "False");
     if (main_controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_UP) &&
         main_controller.get_digital_new_press(
             pros::E_CONTROLLER_DIGITAL_LEFT)) {
@@ -348,13 +349,17 @@ void opcontrol() {
           LEFT_Y_AXIS, RIGHT_X_AXIS, left_motor_voltage,
           right_motor_voltage); // Handle drive control and motor calc
 
-      printf("LV:%f|RV:%f", left_motor_voltage, right_motor_voltage);
+      
       // print joystick values to controller screen for testing
       // controller screen for testing
       left_motors_drivetrain.move(left_motor_voltage);
       right_motors_drivetrain.move(right_motor_voltage);
 
       pros::delay(20); // keep update time set to keep cpu happy :)
+      // debug print info
+      main_controller.print(1, 0, "LV:%f|RV:%f", left_motor_voltage, right_motor_voltage);
+      pros::lcd::print(1,  "Right Y: %f || Left X: %f", LEFT_Y_AXIS, RIGHT_X_AXIS);
     }
+
   }
 }
