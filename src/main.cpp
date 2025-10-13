@@ -26,9 +26,9 @@
 
 using namespace std;
 
-// init drivetrain motor groups and controller. 
-//sets motor to blue gear cartridge, inits ports, and starts tracking the encoding
-//for the motors in degrees
+// init drivetrain motor groups and controller.
+// sets motor to blue gear cartridge, inits ports, and starts tracking the
+// encoding for the motors in degrees
 pros::MotorGroup left_motors_drivetrain({-6, 13, -14},
                                         pros::v5::MotorGears::rpm_600,
                                         pros::v5::MotorUnits::degrees);
@@ -130,10 +130,7 @@ void disabled() {
  * This task will exit when the robot is enabled and autonomous or opcontrol
  * starts.
  */
-void competition_initialize() {
-  chassis.resetLocalPosition();
-}
-
+void competition_initialize() { chassis.resetLocalPosition(); }
 
 // function to update pneumatics based on states
 void updatePneumatics() {
@@ -233,11 +230,16 @@ void handleDrivetrainControl(int LEFT_Y_AXIS, int RIGHT_X_AXIS,
   // clockwise/counter-clockwise on right stick X
 
   // deadzone for joystick values
-  if (abs(LEFT_Y_AXIS) < 5)
+  if (abs(LEFT_Y_AXIS) < 5) {
     LEFT_Y_AXIS = 0;
-  if (abs(RIGHT_X_AXIS) < 5)
+  left_motors_drivetrain.set_brake_mode(pros::E_MOTOR_BRAKE_BRAKE); 
+  left_motors_drivetrain.move(0);
+  }
+  if (abs(RIGHT_X_AXIS) < 5) {
     RIGHT_X_AXIS = 0;
-
+    right_motors_drivetrain.move(0);
+    right_motors_drivetrain.set_brake_mode(pros::E_MOTOR_BRAKE_BRAKE); 
+  }
   // Constants
   constexpr int MOTOR_MAX = 127;
   // Overflow transfer correction
@@ -306,13 +308,19 @@ void autonomous() {}
 bool run_main = false;
 void opcontrol() {
   while (true) {
-    if (main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_UP) &&
-        main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_LEFT)) {
+    if (main_controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_UP) &&
+        main_controller.get_digital_new_press(
+            pros::E_CONTROLLER_DIGITAL_LEFT)) {
       run_main = !run_main;
-    }
-    left_motors_drivetrain.move_relative(100, 100);
 
-    while (run_main) {
+    } else if (main_controller.get_digital_new_press(
+                   pros::E_CONTROLLER_DIGITAL_UP) &&
+               main_controller.get_digital_new_press(
+                   pros::E_CONTROLLER_DIGITAL_RIGHT)) {
+      chassis.moveToPoint(5, 5, true);
+    }
+
+    if (run_main) {
       // init variables for joystick values
       int LEFT_X_AXIS = main_controller.get_analog(
           pros::E_CONTROLLER_ANALOG_LEFT_X); // LEFT STICK X AXIS
@@ -327,9 +335,9 @@ void opcontrol() {
           pros::E_CONTROLLER_ANALOG_RIGHT_Y); // RIGHT STICK Y AXIS
 
       double left_motor_voltage = expo_joystick(
-          LEFT_Y_AXIS + LEFT_X_AXIS); // left motor voltage calculation
+          LEFT_Y_AXIS + RIGHT_X_AXIS); // left motor voltage calculation
       double right_motor_voltage = expo_joystick(
-          LEFT_Y_AXIS - LEFT_X_AXIS); // right motor voltage calculation
+          LEFT_Y_AXIS - RIGHT_X_AXIS); // right motor voltage calculation
 
       checkControllerButtonPress(); // Check if any controller buttons are
                                     // pressed
