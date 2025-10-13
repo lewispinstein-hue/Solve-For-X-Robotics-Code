@@ -15,7 +15,9 @@
 //  #include "lemlib/chassis/odom.hpp"
 //  #include "lemlib/api.hpp"
 
-#define EXPONENT 1.9 // the exponential curve for the joystick inputs
+#define EXPONENT 1.9       // the exponential curve for the joystick inputs
+double scale_factor = 1.7; // change this to change how the robot reacts while
+                           // two sticks are being pushed
 
 // defines for controller buttons for readability
 #define CONTROLLER_R1 E_CONTROLLER_DIGITAL_R1
@@ -232,20 +234,19 @@ void handleDrivetrainControl(int LEFT_Y_AXIS, int RIGHT_X_AXIS,
   // deadzone for joystick values
   if (abs(LEFT_Y_AXIS) < 5) {
     LEFT_Y_AXIS = 0;
-  left_motors_drivetrain.set_brake_mode(pros::E_MOTOR_BRAKE_BRAKE); 
-  left_motors_drivetrain.move(0);
+    left_motors_drivetrain.set_brake_mode(pros::E_MOTOR_BRAKE_BRAKE);
+    left_motors_drivetrain.move(0);
   }
   if (abs(RIGHT_X_AXIS) < 5) {
     RIGHT_X_AXIS = 0;
     right_motors_drivetrain.move(0);
-    right_motors_drivetrain.set_brake_mode(pros::E_MOTOR_BRAKE_BRAKE); 
+    right_motors_drivetrain.set_brake_mode(pros::E_MOTOR_BRAKE_BRAKE);
   }
   // Constants
   constexpr int MOTOR_MAX = 127;
   // Overflow transfer correction
   double difference = 0.0;
   // easily changable scale factor
-  double scale_factor = 1.7;
 
   // left motor overflow cases
   if (left_motor_voltage > MOTOR_MAX) {
