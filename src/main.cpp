@@ -7,6 +7,7 @@
 #include "pros/misc.h"
 #include "pros/motor_group.hpp"
 #include "pros/rtos.hpp"
+#include <string>
 
 // unused headers:
 //  #include "pros/rotation.h"
@@ -109,8 +110,6 @@ void initialize() {
 
   pros::lcd::initialize();
 }
-
-#include <string>
 
 class Users {
 public:
@@ -301,25 +300,14 @@ double expo_joystick(int input) {
   return curved * 127.0; // scale back to motor range
 }
 
-void handleDrivetrainControl(int LEFT_Y_AXIS, int RIGHT_X_AXIS,
-                             double &left_motor_voltage,
-                             double &right_motor_voltage) {
+// to handle arcade control
+void handleArcadeControl(double &left_motor_voltage,
+                         double &right_motor_voltage) {
   // if the turn value is not large unough, disregard and just use
   // Arcade control scheme
   // forward/backward on left stick Y
   // clockwise/counter-clockwise on right stick X
 
-  // deadzone for joystick values
-  if (abs(LEFT_Y_AXIS) < 5) {
-    LEFT_Y_AXIS = 0;
-    left_motors_drivetrain.set_brake_mode(pros::E_MOTOR_BRAKE_BRAKE);
-    left_motors_drivetrain.move(0);
-  }
-  if (abs(RIGHT_X_AXIS) < 5) {
-    RIGHT_X_AXIS = 0;
-    right_motors_drivetrain.set_brake_mode(pros::E_MOTOR_BRAKE_BRAKE);
-    right_motors_drivetrain.move(0);
-  }
   // Constants
   constexpr int MOTOR_MAX = 127;
   // Overflow transfer correction
@@ -371,6 +359,14 @@ void handleDrivetrainControl(int LEFT_Y_AXIS, int RIGHT_X_AXIS,
       custom_clamp(right_motor_voltage, -MOTOR_MAX, MOTOR_MAX);
 }
 
+//to handle tank control
+void handleTankControl(int LEFT_Y_AXIS, int RIGHT_Y_AXIS,
+                       double &left_motor_voltage,
+                       double &right_motor_voltage) {
+  left_motor_voltage = LEFT_Y_AXIS;
+  right_motor_voltage = RIGHT_Y_AXIS;
+}
+
 /**
  * Runs the user autonomous code. This function will be started in its own task
  * with the default priority and stack size whenever the robot is enabled via
@@ -418,14 +414,31 @@ void opcontrol() {
     double right_motor_voltage = expo_joystick(
         LEFT_Y_AXIS - RIGHT_X_AXIS); // right motor voltage calculation
 
+    // deadzone for joystick values
+    if (abs(LEFT_Y_AXIS) < 5) {
+      LEFT_Y_AXIS = 0;
+      left_motors_drivetrain.set_brake_mode(pros::E_MOTOR_BRAKE_BRAKE);
+      left_motors_drivetrain.move(0);
+    }
+    if (abs(RIGHT_X_AXIS) < 5) {
+      RIGHT_X_AXIS = 0;
+      right_motors_drivetrain.set_brake_mode(pros::E_MOTOR_BRAKE_BRAKE);
+      right_motors_drivetrain.move(0);
+    }
+
     checkControllerButtonPress(); // Check if any controller buttons are
                                   // pressed
     updatePneumatics();           // Update pneumatics based on bool/enum states
     updateBallConveyorMotors();
-    handleDrivetrainControl(
-        LEFT_Y_AXIS, RIGHT_X_AXIS, left_motor_voltage,
-        right_motor_voltage); // Handle drive control and motor calc
+    if (Users::currentUser->getControlType() == Users::ControlType::Arcade) {
+      handleArcadeControl(left_motor_voltage, right_motor_voltage);
 
+    } else if (Users::currentUser->getControlType() ==
+               Users::ControlType::Tank) {
+      // give it the values with expo joystick for the ease of control
+      handleTankControl(expo_joystick(LEFT_Y_AXIS), expo_joystick(RIGHT_Y_AXIS),
+                        left_motor_voltage, right_motor_voltage);
+    }
     // print joystick values to controller screen for testing
     // controller screen for testing
     left_motors_drivetrain.move(left_motor_voltage);
