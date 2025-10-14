@@ -7,6 +7,7 @@
 #include "pros/misc.h"
 #include "pros/motor_group.hpp"
 #include "pros/rtos.hpp"
+#include <string>
 
 // unused headers:
 //  #include "pros/rotation.h"
@@ -110,8 +111,6 @@ void initialize() {
   pros::lcd::initialize();
 }
 
-#include <string>
-
 class Users {
 public:
   enum class ControlType { Arcade, Tank };
@@ -155,7 +154,7 @@ public:
 };
 
 Users eli("Eli", 8, 12, 1.8, 1.6, Users::ControlType::Arcade);
-Users* Users::currentUser = &eli;  // globally initialize current user
+Users *Users::currentUser = &eli; // globally initialize current user
 
 /**
  * Runs while the robot is in the disabled state of Field Management System or
@@ -302,34 +301,17 @@ double expo_joystick(int input) {
   return curved * 127.0; // scale back to motor range
 }
 
-void handleDrivetrainControl(int LEFT_Y_AXIS, int RIGHT_X_AXIS,
-                             double &left_motor_voltage,
-                             double &right_motor_voltage) {
+void handleArcadeControl(double &left_motor_voltage,
+                         double &right_motor_voltage) {
   // if the turn value is not large unough, disregard and just use
   // Arcade control scheme
   // forward/backward on left stick Y
   // clockwise/counter-clockwise on right stick X
 
-  // deadzone for joystick values
-  if (abs(LEFT_Y_AXIS) < 5) {
-    LEFT_Y_AXIS = 0;
-    left_motors_drivetrain.set_brake_mode(pros::E_MOTOR_BRAKE_BRAKE);
-    left_motors_drivetrain.move(0);
-  }
-  if (abs(RIGHT_X_AXIS) < 5) {
-    RIGHT_X_AXIS = 0;
-    right_motors_drivetrain.set_brake_mode(pros::E_MOTOR_BRAKE_BRAKE);
-    right_motors_drivetrain.move(0);
-  }
-
   // Constants
   constexpr int MOTOR_MAX = 127;
   // Overflow transfer correction
   double difference = 0.0;
-
-  // comparing cases for slew
-  static double prev_left_voltage = 0.0;
-  static double prev_right_voltage = 0.0;
 
   // left motor overflow cases
   if (left_motor_voltage > MOTOR_MAX) {
@@ -356,21 +338,6 @@ void handleDrivetrainControl(int LEFT_Y_AXIS, int RIGHT_X_AXIS,
     right_motor_voltage = -MOTOR_MAX;
     left_motor_voltage += difference;
   }
-
-  // slew control
-  left_motor_voltage =
-      slewLimit(left_motor_voltage, prev_left_voltage, MAX_DELTA, MIN_DELTA);
-  right_motor_voltage =
-      slewLimit(right_motor_voltage, prev_right_voltage, MAX_DELTA, MIN_DELTA);
-
-  // update slew limiters
-  prev_left_voltage = left_motor_voltage;
-  prev_right_voltage = right_motor_voltage;
-
-  // double check to make sure we are in range
-  left_motor_voltage = custom_clamp(left_motor_voltage, -MOTOR_MAX, MOTOR_MAX);
-  right_motor_voltage =
-      custom_clamp(right_motor_voltage, -MOTOR_MAX, MOTOR_MAX);
 }
 
 /**
@@ -401,21 +368,23 @@ void autonomous() {}
  */
 
 void opcontrol() {
-      Users::currentUser = &eli;
   while (true) {
-    setActiveUser();
     // init variables for joystick values
-    int LEFT_X_AXIS = main_controller.get_analog(
-        pros::E_CONTROLLER_ANALOG_LEFT_X); // LEFT STICK X AXIS
+    int LEFT_Y_AXIS = main_controller.get_analog(CONTROLLER_LEFT_Y);
+    int RIGHT_X_AXIS = main_controller.get_analog(CONTROLLER_RIGHT_X);
+    int RIGHT_Y_AXIS = main_controller.get_analog(CONTROLLER_RIGHT_Y);
 
-    int LEFT_Y_AXIS =
-        main_controller.get_analog(CONTROLLER_LEFT_Y); // LEFT STICK Y AXIS
-
-    int RIGHT_X_AXIS =
-        main_controller.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X); // RIGHT STICK X AXIS
-
-    int RIGHT_Y_AXIS =
-        main_controller.get_analog(CONTROLLER_RIGHT_Y); // RIGHT STICK Y AXIS
+    // deadzone for joystick values
+    if (abs(LEFT_Y_AXIS) < 5) {
+      LEFT_Y_AXIS = 0;
+      left_motors_drivetrain.set_brake_mode(pros::E_MOTOR_BRAKE_BRAKE);
+      left_motors_drivetrain.move(0);
+    }
+    if (abs(RIGHT_X_AXIS) < 5) {
+      RIGHT_X_AXIS = 0;
+      right_motors_drivetrain.set_brake_mode(pros::E_MOTOR_BRAKE_BRAKE);
+      right_motors_drivetrain.move(0);
+    }
 
     double left_motor_voltage = expo_joystick(
         LEFT_Y_AXIS + RIGHT_X_AXIS); // left motor voltage calculation
@@ -426,17 +395,42 @@ void opcontrol() {
                                   // pressed
     updatePneumatics();           // Update pneumatics based on bool/enum states
     updateBallConveyorMotors();
-    handleDrivetrainControl(
-        LEFT_Y_AXIS, RIGHT_X_AXIS, left_motor_voltage,
-        right_motor_voltage); // Handle drive control and motor calc
+    setActiveUser();
 
-    // print joystick values to controller screen for testing
-    // controller screen for testing
+    if (Users::currentUser->getControlType() == Users::ControlType::Arcade) {
+      handleArcadeControl(
+          left_motor_voltage,
+          right_motor_voltage); // Handle drive control and motor calc
+    } else if (Users::currentUser->getControlType() ==
+               Users::ControlType::Tank) {
+      left_motor_voltage = expo_joystick(LEFT_Y_AXIS);
+      right_motor_voltage = expo_joystick(RIGHT_Y_AXIS);
+    }
+
+    // comparing cases for slew
+    static double prev_left_voltage = 0.0;
+    static double prev_right_voltage = 0.0;
+
+    // slew control
+    left_motor_voltage =
+        slewLimit(left_motor_voltage, prev_left_voltage, MAX_DELTA, MIN_DELTA);
+    right_motor_voltage = slewLimit(right_motor_voltage, prev_right_voltage,
+                                    MAX_DELTA, MIN_DELTA);
+
+    // update slew limiters
+    prev_left_voltage = left_motor_voltage;
+    prev_right_voltage = right_motor_voltage;
+
+    // double check to make sure we are in range
+    left_motor_voltage = custom_clamp(left_motor_voltage, -127, 127);
+    right_motor_voltage = custom_clamp(right_motor_voltage, -127, 127);
+
     left_motors_drivetrain.move(left_motor_voltage);
     right_motors_drivetrain.move(right_motor_voltage);
-    
+
     pros::lcd::print(1, "Right Y: %d || Left X: %d", LEFT_Y_AXIS, RIGHT_X_AXIS);
-    pros::lcd::print(2, "Right Y: %f || Left X: %f", left_motor_voltage, right_motor_voltage);
+    pros::lcd::print(2, "Right Y: %f || Left X: %f", left_motor_voltage,
+                     right_motor_voltage);
 
     pros::delay(20); // keep update time set to keep cpu happy :)
   }
