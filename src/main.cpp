@@ -15,10 +15,6 @@
 //  #include "lemlib/chassis/odom.hpp"
 //  #include "lemlib/api.hpp"
 
-constexpr double EXPONENT =
-    1.9; // the exponential curve for the joystick inputs
-constexpr double scale_factor = 1.6; // define scale factor for Pid
-
 // defines for controller buttons for readability
 #define CONTROLLER_R1 pros::E_CONTROLLER_DIGITAL_R1
 #define CONTROLLER_R2 pros::E_CONTROLLER_DIGITAL_R2
@@ -114,6 +110,52 @@ void initialize() {
   pros::lcd::initialize();
 }
 
+#include <string>
+
+class Users {
+public:
+  enum class ControlType { Arcade, Tank };
+
+protected:
+  std::string name;
+  int SLEW_MAX;
+  int SLEW_MIN;
+  double SCALE_FACTOR;
+  double EXPONENT;
+  ControlType control_type;
+
+public:
+  //  constructor
+  Users(std::string name, int slew_max, int slew_min, double exponent,
+        double scale_factor, ControlType control)
+      : name(name), SLEW_MAX(slew_max), SLEW_MIN(slew_min),
+        SCALE_FACTOR(scale_factor), EXPONENT(exponent), control_type(control) {}
+
+  // setter
+  void setDriverInfo(std::string newName, int slew_max, int slew_min,
+                     double exponent, double scale_factor,
+                     ControlType control) {
+    this->name = newName;
+    this->SLEW_MAX = slew_max;
+    this->SLEW_MIN = slew_min;
+    this->EXPONENT = exponent;
+    this->SCALE_FACTOR = scale_factor;
+    this->control_type = control;
+  }
+
+  // getters
+  std::string getName() const { return name; }
+  int getSlewMax() const { return SLEW_MAX; }
+  int getSlewMin() const { return SLEW_MIN; }
+  double getExponent() const { return EXPONENT; }
+  double getScaleFactor() const { return SCALE_FACTOR; }
+  ControlType getControlType() const { return control_type; }
+
+  static Users *currentUser;
+};
+
+Users eli("Eli", 8, 12, 1.8, 1.6, Users::ControlType::Arcade);
+
 /**
  * Runs while the robot is in the disabled state of Field Management System or
  * the VEX Competition Switch, following either autonomous or opcontrol. When
@@ -202,6 +244,49 @@ void checkControllerButtonPress() {
          current_ball_conveyor_state ? "true" : "false");
 }
 
+double custom_clamp(double input, double MIN_VALUE, double MAX_VALUE) {
+  if (input < MIN_VALUE)
+    return MIN_VALUE;
+  if (input > MAX_VALUE)
+    return MAX_VALUE;
+  return input;
+}
+
+double slewLimit(double target, double prev, double riseMaxDelta,
+                 double fallMaxDelta) {
+  double delta = target - prev;
+
+  // accelerating (increasing magnitude)
+  if (delta > 0) {
+    if (delta > riseMaxDelta)
+      delta = riseMaxDelta;
+  }
+  // decelerating (reducing magnitude)
+  else if (delta < 0) {
+    if (delta < -fallMaxDelta)
+      delta = -fallMaxDelta;
+  }
+  return prev + delta;
+}
+
+// create variales for Users
+double MAX_DELTA;
+double MIN_DELTA;
+double scale_factor;
+double EXPONENT;
+void setActiveUser() {
+  if (main_controller.get_digital_new_press(CONTROLLER_UP)) {
+    Users::currentUser = &eli;
+  }
+  // update variables
+  MAX_DELTA = Users::currentUser->getSlewMax();
+  MIN_DELTA = Users::currentUser->getSlewMin();
+  scale_factor = Users::currentUser->getScaleFactor();
+  EXPONENT = Users::currentUser->getExponent();
+  // uptate user print
+  main_controller.print(0, 0, "Current User: %s", *Users::currentUser);
+}
+
 double expo_joystick(int input) {
   // function to apply an exponential curve to the input.
   // is is applyed to the fowards and turn values in opcontrol()
@@ -214,28 +299,6 @@ double expo_joystick(int input) {
     return input;
   }
   return curved * 127.0; // scale back to motor range
-}
-
-double custom_clamp(double input, double MIN_VALUE, double MAX_VALUE) {
-  if (input < MIN_VALUE)
-    return MIN_VALUE;
-  if (input > MAX_VALUE)
-    return MAX_VALUE;
-  return input;
-}
-
-double slewLimit(double target, double prev, double riseMaxDelta, double fallMaxDelta) {
-  double delta = target - prev;
-
-  // accelerating (increasing magnitude)
-  if (delta > 0) {
-    if (delta > riseMaxDelta) delta = riseMaxDelta;
-  }
-  // decelerating (reducing magnitude)
-  else if (delta < 0) {
-    if (delta < -fallMaxDelta) delta = -fallMaxDelta;
-  }
-  return prev + delta;
 }
 
 void handleDrivetrainControl(int LEFT_Y_AXIS, int RIGHT_X_AXIS,
@@ -261,9 +324,7 @@ void handleDrivetrainControl(int LEFT_Y_AXIS, int RIGHT_X_AXIS,
   constexpr int MOTOR_MAX = 127;
   // Overflow transfer correction
   double difference = 0.0;
-  // slew rate
-  constexpr double MAX_DELTA = 8.0;
-  constexpr double MIN_DELTA = 12.0;
+
   // comparing cases for slew
   static double prev_left_voltage = 0.0;
   static double prev_right_voltage = 0.0;
@@ -300,6 +361,7 @@ void handleDrivetrainControl(int LEFT_Y_AXIS, int RIGHT_X_AXIS,
   right_motor_voltage =
       slewLimit(right_motor_voltage, prev_right_voltage, MAX_DELTA, MIN_DELTA);
 
+  // update slew limiters
   prev_left_voltage = left_motor_voltage;
   prev_right_voltage = right_motor_voltage;
 
@@ -363,9 +425,6 @@ void opcontrol() {
     handleDrivetrainControl(
         LEFT_Y_AXIS, RIGHT_X_AXIS, left_motor_voltage,
         right_motor_voltage); // Handle drive control and motor calc
-
-    main_controller.print(1, 0, "LV:%f|RV:%f", left_motor_voltage,
-                          right_motor_voltage);
 
     // print joystick values to controller screen for testing
     // controller screen for testing
