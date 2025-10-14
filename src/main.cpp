@@ -154,7 +154,8 @@ public:
 };
 
 Users eli("Eli", 6, 8, 1.8, 1.6, Users::ControlType::Arcade);
-Users *Users::currentUser = &eli; // globally initialize current user
+Users lewis("Lewis", 6, 8, 2, 1.5, Users::ControlType::Arcade);
+Users *Users::currentUser = &eli; // globally initialize current user as default
 
 /**
  * Runs while the robot is in the disabled state of Field Management System or
@@ -289,7 +290,9 @@ void setActiveUser() {
     case 1:
     Users::currentUser = &eli;
     break;
-    // case 2:
+    case 2:
+    Users::currentUser = &lewis;
+    break;
     default:
     break;
   }
