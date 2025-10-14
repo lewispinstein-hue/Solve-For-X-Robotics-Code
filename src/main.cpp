@@ -153,7 +153,7 @@ public:
   static Users *currentUser;
 };
 
-Users eli("Eli", 8, 12, 1.8, 1.6, Users::ControlType::Arcade);
+Users eli("Eli", 6, 8, 1.8, 1.6, Users::ControlType::Arcade);
 Users *Users::currentUser = &eli; // globally initialize current user
 
 /**
@@ -269,22 +269,38 @@ double slewLimit(double target, double prev, double riseMaxDelta,
   return prev + delta;
 }
 
-// create variales for Users
+// create variales for Users with default values
 double MAX_DELTA = 2;
 double MIN_DELTA = 2;
 double scale_factor = 2;
 double EXPONENT = 1.7;
+
+int track_user = 1;
 void setActiveUser() {
+  // track user in a number system, not one button per user
   if (main_controller.get_digital_new_press(CONTROLLER_UP)) {
-    Users::currentUser = &eli;
+    track_user++;
+  } else if (main_controller.get_digital_new_press(CONTROLLER_DOWN)) {
+    track_user--;
   }
+
+  // As we create users, put there adresses in this switch.
+  switch (track_user) {
+    case 1:
+    Users::currentUser = &eli;
+    break;
+    // case 2:
+    default:
+    break;
+  }
+
   // update variables
   MAX_DELTA = Users::currentUser->getSlewMax();
   MIN_DELTA = Users::currentUser->getSlewMin();
   scale_factor = Users::currentUser->getScaleFactor();
   EXPONENT = Users::currentUser->getExponent();
   // uptate user print
-  pros::lcd::print(4, "Current User: %s", *Users::currentUser);
+  pros::lcd::print(0, "Current User: %s | User Number: %d", *Users::currentUser, track_user);
 }
 
 double expo_joystick(int input) {
