@@ -224,10 +224,17 @@ double custom_clamp(double input, double MIN_VALUE, double MAX_VALUE) {
   return input;
 }
 
-double slewLimit(double target, double prev, double maxDelta) {
+double slewLimit(double target, double prev, double riseMaxDelta, double fallMaxDelta) {
   double delta = target - prev;
-  if (fabs(delta) > maxDelta)
-    delta = (delta > 0) ? maxDelta : -maxDelta;
+
+  // accelerating (increasing magnitude)
+  if (delta > 0) {
+    if (delta > riseMaxDelta) delta = riseMaxDelta;
+  }
+  // decelerating (reducing magnitude)
+  else if (delta < 0) {
+    if (delta < -fallMaxDelta) delta = -fallMaxDelta;
+  }
   return prev + delta;
 }
 
@@ -256,6 +263,7 @@ void handleDrivetrainControl(int LEFT_Y_AXIS, int RIGHT_X_AXIS,
   double difference = 0.0;
   // slew rate
   constexpr double MAX_DELTA = 8.0;
+  constexpr double MIN_DELTA = 12.0;
   // comparing cases for slew
   static double prev_left_voltage = 0.0;
   static double prev_right_voltage = 0.0;
@@ -288,9 +296,9 @@ void handleDrivetrainControl(int LEFT_Y_AXIS, int RIGHT_X_AXIS,
 
   // slew control
   left_motor_voltage =
-      slewLimit(left_motor_voltage, prev_left_voltage, MAX_DELTA);
+      slewLimit(left_motor_voltage, prev_left_voltage, MAX_DELTA, MIN_DELTA);
   right_motor_voltage =
-      slewLimit(right_motor_voltage, prev_right_voltage, MAX_DELTA);
+      slewLimit(right_motor_voltage, prev_right_voltage, MAX_DELTA, MIN_DELTA);
 
   prev_left_voltage = left_motor_voltage;
   prev_right_voltage = right_motor_voltage;
