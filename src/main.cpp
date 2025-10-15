@@ -54,7 +54,21 @@ pros::Motor upper_transit_motor(7);
 pros::Motor intake_transit_motor(-2);
 
 // Lemlib initialization
+constexpr float HALF_TRACK = 11.5f / 2.0f;
+
 pros::Imu inertial_sensor(10); // adjust port when we get sensor
+
+lemlib::TrackingWheel
+    leftVerticalTrackingWheel(&left_motors_drivetrain,
+                              lemlib::Omniwheel::NEW_325,
+                              -HALF_TRACK, // flip sign if numbers are off
+                              600);
+
+lemlib::TrackingWheel
+    rightVerticalTrackingWheel(&right_motors_drivetrain,
+                               lemlib::Omniwheel::NEW_325,
+                               HALF_TRACK, // flip sign if numbers are off
+                               600);
 
 lemlib::ControllerSettings lateralSettings(12, 0, 2, // kP, kI, kD
                                            0,      // integral anti-windup range
@@ -65,12 +79,13 @@ lemlib::ControllerSettings lateralSettings(12, 0, 2, // kP, kI, kD
 
 lemlib::ControllerSettings angularSettings(3, 0, 12, 0, 1, 100, 3, 500, 10);
 
-lemlib::OdomSensors odomSensors(nullptr,         // vertical1
-                                nullptr,         // vertical2
-                                nullptr,         // horizontal1
-                                nullptr,         // horizontal2
-                                &inertial_sensor // IMU
-);
+lemlib::OdomSensors
+    odomSensors(&leftVerticalTrackingWheel,  // vertical1
+                &rightVerticalTrackingWheel, // vertical2
+                nullptr,         // horizontal1 (no horizontal tracking wheel)
+                nullptr,         // horizontal2
+                &inertial_sensor // IMU
+    );
 
 lemlib::Drivetrain main_drivetrain(
     &left_motors_drivetrain,  // left motor group
@@ -102,6 +117,7 @@ ball_conveyor_state current_ball_conveyor_state;
  */
 void initialize() {
   chassis.setPose(0, 0, 0);
+  chassis.calibrate();
   left_motors_drivetrain.set_brake_mode(pros::MotorBrake::brake);
   right_motors_drivetrain.set_brake_mode(pros::MotorBrake::brake);
 
@@ -114,7 +130,7 @@ class Users {
 public:
   enum class ControlType { Arcade, Tank };
 
-  protected:
+protected:
   std::string name;
   int SLEW_MAX;
   int SLEW_MIN;
@@ -238,10 +254,10 @@ void checkControllerButtonPress() {
       // if in middle goal state, switch to upper goal state
       current_ball_conveyor_state = UPPER_GOAL;
     }
+  } else if (main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_A)) {
+    chassis.setPose(0, 0, 0);
+    pros::lcd::print(6, "Pose reset to 0,0,0");
   }
-  printf("Intake funnel Funnel: %s | Conveyer state: %s",
-         funnel_engaged ? "true" : "false",
-         current_ball_conveyor_state ? "true" : "false");
 }
 
 double custom_clamp(double input, double MIN_VALUE, double MAX_VALUE) {
@@ -255,18 +271,30 @@ double custom_clamp(double input, double MIN_VALUE, double MAX_VALUE) {
 double slewLimit(double target, double prev, double riseMaxDelta,
                  double fallMaxDelta) {
   double delta = target - prev;
+  double absTarget = fabs(target);
+  double absPrev = fabs(prev);
+  double absDelta = fabs(delta);
 
-  // accelerating (increasing magnitude)
-  if (delta > 0) {
-    if (delta > riseMaxDelta)
-      delta = riseMaxDelta;
+  // Determine if increasing or decreasing in magnitude
+  bool increasingMagnitude = absTarget > absPrev;
+
+  // Apply correct limit
+  if (increasingMagnitude) {
+    // accelerating
+    if (absDelta > riseMaxDelta) {
+      absDelta = riseMaxDelta;
+    }
+  } else {
+    // decelerating
+    if (absDelta > fallMaxDelta) {
+      absDelta = fallMaxDelta;
+    }
   }
-  // decelerating (reducing magnitude)
-  else if (delta < 0) {
-    if (delta < -fallMaxDelta)
-      delta = -fallMaxDelta;
-  }
-  return prev + delta;
+
+  // Reapply original sign
+  double limitedDelta = (delta >= 0) ? absDelta : -absDelta;
+
+  return prev + limitedDelta;
 }
 
 // create variales for Users with default values
@@ -280,10 +308,13 @@ void setActiveUser() {
   // track user in a number system, not one button per user
   if (main_controller.get_digital_new_press(CONTROLLER_UP)) {
     track_user++;
+    if (track_user > 2)
+      track_user = 1; // wrap around
   } else if (main_controller.get_digital_new_press(CONTROLLER_DOWN)) {
     track_user--;
+    if (track_user < 1)
+      track_user = 2; // wrap around
   }
-
   // As we create users, put there adresses in this switch.
   switch (track_user) {
   case 1:
@@ -293,6 +324,7 @@ void setActiveUser() {
     Users::currentUser = &lewis;
     break;
   default:
+    Users::currentUser = &eli;
     break;
   }
 
@@ -301,9 +333,6 @@ void setActiveUser() {
   MIN_DELTA = Users::currentUser->getSlewMin();
   scale_factor = Users::currentUser->getScaleFactor();
   EXPONENT = Users::currentUser->getExponent();
-  // uptate user print
-  pros::lcd::print(0, "Current User: %s | User Number: %d", *Users::currentUser,
-                   track_user);
 }
 
 double expo_joystick(int input) {
@@ -359,6 +388,52 @@ void handleArcadeControl(double &left_motor_voltage,
   }
 }
 
+void handleDriving(int LEFT_Y_AXIS, int RIGHT_X_AXIS, int RIGHT_Y_AXIS,
+                   double &left_motor_voltage, double &right_motor_voltage) {
+
+  if (Users::currentUser->getControlType() == Users::ControlType::Arcade) {
+    handleArcadeControl(
+        left_motor_voltage,
+        right_motor_voltage); // Handle drive control and motor calc
+  } else if (Users::currentUser->getControlType() == Users::ControlType::Tank) {
+    left_motor_voltage = expo_joystick(LEFT_Y_AXIS);
+    right_motor_voltage = expo_joystick(RIGHT_Y_AXIS);
+  }
+}
+
+void printDebug(int LEFT_Y_AXIS, int RIGHT_X_AXIS, double left_motor_voltage,
+                double right_motor_voltage) {
+
+  lemlib::Pose pose = chassis.getPose();
+  pros::lcd::print(0, "Intake Funnel: %s", funnel_engaged ? "true" : "false");
+
+  pros::lcd::print(1, "Right Y: %d || Left X: %d", LEFT_Y_AXIS, RIGHT_X_AXIS);
+
+  pros::lcd::print(2, "Right Y: %.1f || Left X: %.1f", left_motor_voltage,
+                   right_motor_voltage);
+
+  pros::lcd::print(3, "Heading: %f", pose.theta);
+  pros::lcd::print(4, "X Relative: %f | Y Relative: %f", pose.x, pose.y);
+  // uptate user print
+  pros::lcd::print(5, "Current User: %s | User Number: %d",
+                   Users::currentUser->getName().c_str(), track_user);
+
+  static lemlib::Pose prevPose = chassis.getPose();
+  static uint32_t prevTime = pros::millis();
+
+  uint32_t currentTime = pros::millis();
+  lemlib::Pose currentPose = chassis.getPose();
+
+  double dt = (currentTime - prevTime) / 1000.0;
+  double vx = (dt > 0) ? (currentPose.x - prevPose.x) / dt : 0;
+  double vy = (dt > 0) ? (currentPose.y - prevPose.y) / dt : 0;
+
+  pros::lcd::print(6, "Vel X: %.2f | Vel Y: %.2f", vx, vy);
+
+  prevPose = currentPose;
+  prevTime = currentTime;
+}
+
 /**
  * Runs the user autonomous code. This function will be started in its own task
  * with the default priority and stack size whenever the robot is enabled via
@@ -394,37 +469,24 @@ void opcontrol() {
     int RIGHT_Y_AXIS = main_controller.get_analog(CONTROLLER_RIGHT_Y);
 
     // deadzone for joystick values
-    if (abs(LEFT_Y_AXIS) < 5) {
+    if (abs(LEFT_Y_AXIS) < 5)
       LEFT_Y_AXIS = 0;
-      left_motors_drivetrain.set_brake_mode(pros::E_MOTOR_BRAKE_BRAKE);
-      left_motors_drivetrain.move(0);
-    }
-    if (abs(RIGHT_X_AXIS) < 5) {
+    if (abs(RIGHT_X_AXIS) < 5)
       RIGHT_X_AXIS = 0;
-      right_motors_drivetrain.set_brake_mode(pros::E_MOTOR_BRAKE_BRAKE);
-      right_motors_drivetrain.move(0);
-    }
 
     double left_motor_voltage = expo_joystick(
         LEFT_Y_AXIS + RIGHT_X_AXIS); // left motor voltage calculation
     double right_motor_voltage = expo_joystick(
         LEFT_Y_AXIS - RIGHT_X_AXIS); // right motor voltage calculation
 
-    checkControllerButtonPress(); // Check if any controller buttons are
-                                  // pressed
+    checkControllerButtonPress(); // Check if any controller buttons are pressed
     updatePneumatics();           // Update pneumatics based on bool/enum states
     updateBallConveyorMotors();
-    setActiveUser();
 
-    if (Users::currentUser->getControlType() == Users::ControlType::Arcade) {
-      handleArcadeControl(
-          left_motor_voltage,
-          right_motor_voltage); // Handle drive control and motor calc
-    } else if (Users::currentUser->getControlType() ==
-               Users::ControlType::Tank) {
-      left_motor_voltage = expo_joystick(LEFT_Y_AXIS);
-      right_motor_voltage = expo_joystick(RIGHT_Y_AXIS);
-    }
+    setActiveUser(); // change active user
+
+    handleDriving(LEFT_Y_AXIS, RIGHT_X_AXIS, RIGHT_Y_AXIS, left_motor_voltage,
+                  right_motor_voltage);
 
     // comparing cases for slew
     static double prev_left_voltage = 0.0;
@@ -447,12 +509,8 @@ void opcontrol() {
     left_motors_drivetrain.move(left_motor_voltage);
     right_motors_drivetrain.move(right_motor_voltage);
 
-    lemlib::Pose pose = chassis.getPose();
-    pros::lcd::print(1, "Right Y: %d || Left X: %d", LEFT_Y_AXIS, RIGHT_X_AXIS);
-    pros::lcd::print(2, "Right Y: %.1f || Left X: %.1f", left_motor_voltage,
-                     right_motor_voltage);
-    pros::lcd::print(3, "Heading: %f", pose.theta);
-    pros::lcd::print(4, "X Relative: %f | Y Relative %f", pose.x, pose.y);
+    printDebug(LEFT_Y_AXIS, RIGHT_X_AXIS, left_motor_voltage,
+               right_motor_voltage);
 
     pros::delay(20); // keep update time set to keep cpu happy :)
   }
