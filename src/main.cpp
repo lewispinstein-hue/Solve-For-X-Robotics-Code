@@ -60,10 +60,10 @@ lemlib::ControllerSettings lateralSettings(12, 0, 2, // kP, kI, kD
                                            0,      // integral anti-windup range
                                            1, 100, // small error range, timeout
                                            3, 500, // large error range, timeout
-                                           5       // max acceleration (slew)
+                                           10      // max acceleration (slew)
 );
 
-lemlib::ControllerSettings angularSettings(3, 0, 12, 0, 1, 100, 3, 500, 5);
+lemlib::ControllerSettings angularSettings(3, 0, 12, 0, 1, 100, 3, 500, 10);
 
 lemlib::OdomSensors odomSensors(nullptr,         // vertical1
                                 nullptr,         // vertical2
@@ -101,7 +101,7 @@ ball_conveyor_state current_ball_conveyor_state;
  * to keep execution time for this mode under a few seconds.
  */
 void initialize() {
-  chassis.resetLocalPosition();
+  chassis.setPose(0, 0, 0);
   left_motors_drivetrain.set_brake_mode(pros::MotorBrake::brake);
   right_motors_drivetrain.set_brake_mode(pros::MotorBrake::brake);
 
@@ -110,12 +110,11 @@ void initialize() {
 
   pros::lcd::initialize();
 }
-
 class Users {
 public:
   enum class ControlType { Arcade, Tank };
 
-protected:
+  protected:
   std::string name;
   int SLEW_MAX;
   int SLEW_MIN;
@@ -176,7 +175,7 @@ void disabled() {
  * This task will exit when the robot is enabled and autonomous or opcontrol
  * starts.
  */
-void competition_initialize() { chassis.resetLocalPosition(); }
+void competition_initialize() {}
 
 // function to update pneumatics based on states
 void updatePneumatics() {
@@ -287,13 +286,13 @@ void setActiveUser() {
 
   // As we create users, put there adresses in this switch.
   switch (track_user) {
-    case 1:
+  case 1:
     Users::currentUser = &eli;
     break;
-    case 2:
+  case 2:
     Users::currentUser = &lewis;
     break;
-    default:
+  default:
     break;
   }
 
@@ -303,7 +302,8 @@ void setActiveUser() {
   scale_factor = Users::currentUser->getScaleFactor();
   EXPONENT = Users::currentUser->getExponent();
   // uptate user print
-  pros::lcd::print(0, "Current User: %s | User Number: %d", *Users::currentUser, track_user);
+  pros::lcd::print(0, "Current User: %s | User Number: %d", *Users::currentUser,
+                   track_user);
 }
 
 double expo_joystick(int input) {
@@ -447,9 +447,12 @@ void opcontrol() {
     left_motors_drivetrain.move(left_motor_voltage);
     right_motors_drivetrain.move(right_motor_voltage);
 
+    lemlib::Pose pose = chassis.getPose();
     pros::lcd::print(1, "Right Y: %d || Left X: %d", LEFT_Y_AXIS, RIGHT_X_AXIS);
-    pros::lcd::print(2, "Right Y: %f || Left X: %f", left_motor_voltage,
+    pros::lcd::print(2, "Right Y: %.1f || Left X: %.1f", left_motor_voltage,
                      right_motor_voltage);
+    pros::lcd::print(3, "Heading: %f", pose.theta);
+    pros::lcd::print(4, "X Relative: %f | Y Relative %f", pose.x, pose.y);
 
     pros::delay(20); // keep update time set to keep cpu happy :)
   }
