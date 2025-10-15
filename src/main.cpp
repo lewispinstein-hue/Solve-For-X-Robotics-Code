@@ -1,12 +1,13 @@
 #include "main.h"
 #include "lemlib/chassis/chassis.hpp"
-#include "liblvgl/llemu.hpp"
 #include "pros/abstract_motor.hpp"
 #include "pros/adi.hpp"
-#include "pros/llemu.hpp"
+#include "pros/colors.hpp"
 #include "pros/misc.h"
 #include "pros/motor_group.hpp"
 #include "pros/rtos.hpp"
+#include "pros/screen.h"
+#include "pros/screen.hpp"
 #include <string>
 
 // unused headers:
@@ -15,6 +16,8 @@
 //  #include "pros/motors.h"
 //  #include "lemlib/chassis/odom.hpp"
 //  #include "lemlib/api.hpp"
+//  #include "liblvgl/llemu.hpp"
+//  #include "pros/llemu.hpp"
 
 // defines for controller buttons for readability
 #define CONTROLLER_R1 pros::E_CONTROLLER_DIGITAL_R1
@@ -54,20 +57,20 @@ pros::Motor upper_transit_motor(7);
 pros::Motor intake_transit_motor(-2);
 
 // Lemlib initialization
-constexpr float HALF_TRACK = 11.5f / 2.0f;
+constexpr float HALF_TRACK = 7.5f / 2.0f;
 
-pros::Imu inertial_sensor(10); // adjust port when we get sensor
+pros::Imu inertial_sensor(16); // adjust port when we get sensor
 
 lemlib::TrackingWheel
     leftVerticalTrackingWheel(&left_motors_drivetrain,
                               lemlib::Omniwheel::NEW_325,
-                              -HALF_TRACK, // flip sign if numbers are off
+                              HALF_TRACK, // flip sign if numbers are off
                               600);
 
 lemlib::TrackingWheel
     rightVerticalTrackingWheel(&right_motors_drivetrain,
                                lemlib::Omniwheel::NEW_325,
-                               HALF_TRACK, // flip sign if numbers are off
+                               -HALF_TRACK, // flip sign if numbers are off
                                600);
 
 lemlib::ControllerSettings lateralSettings(12, 0, 2, // kP, kI, kD
@@ -77,7 +80,7 @@ lemlib::ControllerSettings lateralSettings(12, 0, 2, // kP, kI, kD
                                            10      // max acceleration (slew)
 );
 
-lemlib::ControllerSettings angularSettings(3, 0, 12, 0, 1, 100, 3, 500, 10);
+lemlib::ControllerSettings angularSettings(4, 0, 10, 0, 1, 0, 0, 0, 0);
 
 lemlib::OdomSensors
     odomSensors(&leftVerticalTrackingWheel,  // vertical1
@@ -90,7 +93,7 @@ lemlib::OdomSensors
 lemlib::Drivetrain main_drivetrain(
     &left_motors_drivetrain,  // left motor group
     &right_motors_drivetrain, // right motor group
-    11.5, // track width in inches (measure center-to-center of wheels)
+    7.5, // track width in inches (measure center-to-center of wheels)
     lemlib::Omniwheel::NEW_325, // 3.25" omni wheels
     600, // wheel RPM (green cartridge = 200, blue = 600, red = 100)
     2    // chase power (leave as 2 unless tuning)
@@ -123,8 +126,6 @@ void initialize() {
 
   current_ball_conveyor_state = STOPPED; // initial state
   funnel_engaged = false;
-
-  pros::lcd::initialize();
 }
 class Users {
 public:
@@ -168,8 +169,9 @@ public:
   static Users *currentUser;
 };
 
-Users eli("Eli", 6, 8, 1.8, 1.6, Users::ControlType::Arcade);
-Users lewis("Lewis", 6, 8, 2, 1.5, Users::ControlType::Arcade);
+Users eli("Eli  ", 100, 100, 1.9, 1.6, Users::ControlType::Arcade);
+Users lewis("Lewis", 100, 100, 2, 1.5, Users::ControlType::Arcade);
+Users roger("Roger", 40, 40, 1.9, 1.7, Users::ControlType::Arcade);
 Users *Users::currentUser = &eli; // globally initialize current user as default
 
 /**
@@ -256,7 +258,12 @@ void checkControllerButtonPress() {
     }
   } else if (main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_A)) {
     chassis.setPose(0, 0, 0);
-    pros::lcd::print(6, "Pose reset to 0,0,0");
+    chassis.cancelAllMotions();
+    main_controller.print(0, 0, "Pose reset to 0,0,0");
+  } else if (main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_Y)) {
+    chassis.turnToHeading(chassis.getPose().theta + 90, 1000);
+  } else if (main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_X)) {
+    chassis.swingToHeading(100, lemlib::DriveSide::LEFT, 5000);
   }
 }
 
@@ -304,16 +311,16 @@ double scale_factor = 2;
 double EXPONENT = 1.7;
 
 int track_user = 1;
+constexpr auto sizeOfUsers = 3;
 void setActiveUser() {
-  // track user in a number system, not one button per user
   if (main_controller.get_digital_new_press(CONTROLLER_UP)) {
     track_user++;
-    if (track_user > 2)
+    if (track_user > sizeOfUsers)
       track_user = 1; // wrap around
   } else if (main_controller.get_digital_new_press(CONTROLLER_DOWN)) {
     track_user--;
     if (track_user < 1)
-      track_user = 2; // wrap around
+      track_user = sizeOfUsers; // wrap around
   }
   // As we create users, put there adresses in this switch.
   switch (track_user) {
@@ -323,11 +330,13 @@ void setActiveUser() {
   case 2:
     Users::currentUser = &lewis;
     break;
+  case 3:
+    Users::currentUser = &roger;
+    break;
   default:
     Users::currentUser = &eli;
     break;
   }
-
   // update variables
   MAX_DELTA = Users::currentUser->getSlewMax();
   MIN_DELTA = Users::currentUser->getSlewMin();
@@ -401,22 +410,48 @@ void handleDriving(int LEFT_Y_AXIS, int RIGHT_X_AXIS, int RIGHT_Y_AXIS,
   }
 }
 
-void printDebug(int LEFT_Y_AXIS, int RIGHT_X_AXIS, double left_motor_voltage,
-                double right_motor_voltage) {
+// double floatLimited(double value) {
+//     char buffer[16]; // buffer to hold the formatted string
+//     sprintf(buffer, "%.1f", value); // format to 3 decimal places
+//     return buffer;
+// }
 
-  lemlib::Pose pose = chassis.getPose();
-  pros::lcd::print(0, "Intake Funnel: %s", funnel_engaged ? "true" : "false");
+void printDebug(double LEFT_Y_AXIS, double RIGHT_X_AXIS, float left_motor_v,
+                float right_motor_v) {
 
-  pros::lcd::print(1, "Right Y: %d || Left X: %d", LEFT_Y_AXIS, RIGHT_X_AXIS);
+  pros::screen::set_pen(pros::Color::white);
+  // pros::screen::erase();
 
-  pros::lcd::print(2, "Right Y: %.1f || Left X: %.1f", left_motor_voltage,
-                   right_motor_voltage);
+  pros::screen::print(pros::E_TEXT_SMALL, 25, 20, "Intake Funnel: %s",
+                      funnel_engaged ? "true" : "false");
 
-  pros::lcd::print(3, "Heading: %f", pose.theta);
-  pros::lcd::print(4, "X Relative: %f | Y Relative: %f", pose.x, pose.y);
+  pros::screen::print(pros::E_TEXT_SMALL, 25, 40,
+                      "Left Y: %.1f | Right X: %.1f   ", LEFT_Y_AXIS,
+                      RIGHT_X_AXIS);
+  pros::screen::print(pros::E_TEXT_SMALL, 25, 60, "LV: %.1f | RV: %.1f   ",
+                      left_motor_v, right_motor_v);
   // uptate user print
-  pros::lcd::print(5, "Current User: %s | User Number: %d",
-                   Users::currentUser->getName().c_str(), track_user);
+  pros::screen::print(pros::E_TEXT_SMALL, 25, 80, "Current User: %s    ",
+                      Users::currentUser->getName().c_str());
+  // print pos
+  lemlib::Pose pose = chassis.getPose();
+
+  // code to normalize the heading to 180 to -180 instead of the default total
+  // degres value that getPos() returns
+
+  double correctedHeading = pose.theta;
+  correctedHeading = fmod(correctedHeading, 360.0);
+  if (correctedHeading > 180) {
+    correctedHeading -= 360;
+  } else if (correctedHeading < -180) {
+    correctedHeading += 360;
+  }
+
+  pros::screen::print(pros::E_TEXT_SMALL, 25, 100,
+                      "Heading: %.2f | Corrected Heading: %.1f   ", pose.theta,
+                      correctedHeading);
+  pros::screen::print(pros::E_TEXT_SMALL, 25, 120,
+                      "X Relative: %.2f | Y Relative: %.2f   ", pose.x, pose.y);
 
   static lemlib::Pose prevPose = chassis.getPose();
   static uint32_t prevTime = pros::millis();
@@ -428,10 +463,18 @@ void printDebug(int LEFT_Y_AXIS, int RIGHT_X_AXIS, double left_motor_voltage,
   double vx = (dt > 0) ? (currentPose.x - prevPose.x) / dt : 0;
   double vy = (dt > 0) ? (currentPose.y - prevPose.y) / dt : 0;
 
-  pros::lcd::print(6, "Vel X: %.2f | Vel Y: %.2f", vx, vy);
-
   prevPose = currentPose;
   prevTime = currentTime;
+
+  pros::screen::print(pros::E_TEXT_SMALL, 25, 140, "X Vel: %.2f | ", vx);
+  pros::screen::print(pros::E_TEXT_SMALL, 140, 140, "Y Vel: %.2f", vy);
+  //--------------Prints for controller screen
+  // main_controller.print(0, 0, "Current User: %s ",
+  //                       Users::currentUser->getName());
+  char buffer[21]; //character limit of controller display
+  sprintf(buffer, "H: %3.1f|X: %3.1f|Y: %3.1f", correctedHeading, pose.x,
+          pose.y);
+  main_controller.print(0, 0, buffer, "     ");
 }
 
 /**
@@ -480,17 +523,16 @@ void opcontrol() {
         LEFT_Y_AXIS - RIGHT_X_AXIS); // right motor voltage calculation
 
     checkControllerButtonPress(); // Check if any controller buttons are pressed
-    updatePneumatics();           // Update pneumatics based on bool/enum states
+    updatePneumatics();           // Update pneumatics based on bool/enum
+    // states
     updateBallConveyorMotors();
-
-    setActiveUser(); // change active user
-
+    setActiveUser();
     handleDriving(LEFT_Y_AXIS, RIGHT_X_AXIS, RIGHT_Y_AXIS, left_motor_voltage,
                   right_motor_voltage);
 
     // comparing cases for slew
-    static double prev_left_voltage = 0.0;
-    static double prev_right_voltage = 0.0;
+    static double prev_left_voltage = 0;
+    static double prev_right_voltage = 0;
 
     // slew control
     left_motor_voltage =
