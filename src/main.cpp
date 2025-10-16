@@ -170,7 +170,7 @@ public:
 };
 
 Users eli("Eli  ", 100, 100, 1.9, 1.6, Users::ControlType::Arcade);
-Users lewis("Lewis", 100, 100, 2, 1.5, Users::ControlType::Arcade);
+Users lewis("Lewis", 100, 100, 2, 1.5, Users::ControlType::Tank);
 Users roger("Roger", 40, 40, 1.9, 1.7, Users::ControlType::Arcade);
 Users *Users::currentUser = &eli; // globally initialize current user as default
 
@@ -237,6 +237,8 @@ void updateBallConveyorMotors() {
 void checkControllerButtonPress() {
   if (main_controller.get_digital_new_press(CONTROLLER_B)) {
     funnel_engaged = !funnel_engaged;
+    funnel_pneumatic_right.set_value(funnel_engaged);
+    funnel_pneumatic_left.set_value(funnel_engaged);
   } else if (main_controller.get_digital_new_press(CONTROLLER_R1)) {
     // for toggleable button
     if (current_ball_conveyor_state == MIDDLE_GOAL) {
@@ -523,7 +525,7 @@ void opcontrol() {
         LEFT_Y_AXIS - RIGHT_X_AXIS); // right motor voltage calculation
 
     checkControllerButtonPress(); // Check if any controller buttons are pressed
-    updatePneumatics();           // Update pneumatics based on bool/enum
+    // updatePneumatics();           // Update pneumatics based on bool/enum
     // states
     updateBallConveyorMotors();
     setActiveUser();
