@@ -170,8 +170,8 @@ public:
 };
 
 Users eli("Eli  ", 100, 100, 1.9, 1.6, Users::ControlType::Arcade);
-Users lewis("Lewis", 100, 100, 2, 1.5, Users::ControlType::Tank);
-Users roger("Roger", 40, 40, 1.9, 1.7, Users::ControlType::Arcade);
+Users lewis("Lewis", 50, 50, 2, 1.3, Users::ControlType::Arcade);
+Users roger("Roger", 40, 40, 2.1, 1.7, Users::ControlType::Tank);
 
 Users *Users::currentUser = &eli; // globally initialize current user as default
 
@@ -467,9 +467,9 @@ void printDebug(double LEFT_Y_AXIS, double RIGHT_X_AXIS, float left_motor_v,
   // main_controller.print(0, 0, "Current User: %s ",
   //                       Users::currentUser->getName());
   char buffer[21]; // character limit of controller display
-  sprintf(buffer, "H: %3.1f|X: %3.1f|Y: %3.1f", correctedHeading, pose.x,
+  sprintf(buffer, "H: %3.1f|X: %3.1f|Y: %.1f", correctedHeading, pose.x,
           pose.y);
-  main_controller.print(0, 0, buffer, "     ");
+  main_controller.print(0, 0, buffer);
 }
 
 /**
@@ -512,10 +512,10 @@ void opcontrol() {
     if (abs(RIGHT_X_AXIS) < 5)
       RIGHT_X_AXIS = 0;
 
-    double left_motor_voltage = expo_joystick(
-        LEFT_Y_AXIS + RIGHT_X_AXIS); // left motor voltage calculation
-    double right_motor_voltage = expo_joystick(
-        LEFT_Y_AXIS - RIGHT_X_AXIS); // right motor voltage calculation
+    double forward = expo_joystick(LEFT_Y_AXIS);
+    double turn = expo_joystick(RIGHT_X_AXIS);
+    double left_motor_voltage = forward + turn;
+    double right_motor_voltage = forward - turn;
 
     checkControllerButtonPress(); // Check if any controller buttons are pressed
     updateBallConveyorMotors();   // handle the enum that controlls the ball
