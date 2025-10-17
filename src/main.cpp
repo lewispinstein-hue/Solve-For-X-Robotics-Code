@@ -77,10 +77,10 @@ lemlib::ControllerSettings lateralSettings(12, 0, 2, // kP, kI, kD
                                            0,      // integral anti-windup range
                                            1, 100, // small error range, timeout
                                            3, 500, // large error range, timeout
-                                           10      // max acceleration (slew)
+                                           30      // max acceleration (slew)
 );
 
-lemlib::ControllerSettings angularSettings(4, 0, 10, 0, 1, 0, 0, 0, 0);
+lemlib::ControllerSettings angularSettings(4, 0, 10, 0, 1, 0, 0, 0, 30);
 
 lemlib::OdomSensors
     odomSensors(&leftVerticalTrackingWheel,  // vertical1
@@ -172,6 +172,7 @@ public:
 Users eli("Eli  ", 100, 100, 1.9, 1.6, Users::ControlType::Arcade);
 Users lewis("Lewis", 100, 100, 2, 1.5, Users::ControlType::Tank);
 Users roger("Roger", 40, 40, 1.9, 1.7, Users::ControlType::Arcade);
+
 Users *Users::currentUser = &eli; // globally initialize current user as default
 
 /**
@@ -194,19 +195,6 @@ void disabled() {
  * starts.
  */
 void competition_initialize() {}
-
-// function to update pneumatics based on states
-void updatePneumatics() {
-  if (funnel_engaged) {
-    // engage funnel pneumatics when true
-    funnel_pneumatic_right.set_value(true);
-    funnel_pneumatic_left.set_value(false);
-  } else if (!funnel_engaged) {
-    // disengage funnel pneumatics when false
-    funnel_pneumatic_right.set_value(false);
-    funnel_pneumatic_left.set_value(true);
-  }
-}
 
 void updateBallConveyorMotors() {
   switch (current_ball_conveyor_state) {
@@ -312,16 +300,20 @@ double MIN_DELTA = 2;
 double scale_factor = 2;
 double EXPONENT = 1.7;
 
-int track_user = 1;
+int track_user = 0;
 constexpr auto sizeOfUsers = 3;
 void setActiveUser() {
-  if (main_controller.get_digital_new_press(CONTROLLER_UP)) {
+  if (main_controller.get_digital_new_press(CONTROLLER_UP) &&
+      main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_L2) &&
+      main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_LEFT)) {
     track_user++;
     if (track_user > sizeOfUsers)
       track_user = 1; // wrap around
-  } else if (main_controller.get_digital_new_press(CONTROLLER_DOWN)) {
+  } else if (main_controller.get_digital_new_press(CONTROLLER_DOWN) &&
+             main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_L2) &&
+             main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_LEFT)) {
     track_user--;
-    if (track_user < 1)
+    if (track_user < 0)
       track_user = sizeOfUsers; // wrap around
   }
   // As we create users, put there adresses in this switch.
@@ -339,6 +331,7 @@ void setActiveUser() {
     Users::currentUser = &eli;
     break;
   }
+
   // update variables
   MAX_DELTA = Users::currentUser->getSlewMax();
   MIN_DELTA = Users::currentUser->getSlewMin();
@@ -473,7 +466,7 @@ void printDebug(double LEFT_Y_AXIS, double RIGHT_X_AXIS, float left_motor_v,
   //--------------Prints for controller screen
   // main_controller.print(0, 0, "Current User: %s ",
   //                       Users::currentUser->getName());
-  char buffer[21]; //character limit of controller display
+  char buffer[21]; // character limit of controller display
   sprintf(buffer, "H: %3.1f|X: %3.1f|Y: %3.1f", correctedHeading, pose.x,
           pose.y);
   main_controller.print(0, 0, buffer, "     ");
@@ -525,9 +518,8 @@ void opcontrol() {
         LEFT_Y_AXIS - RIGHT_X_AXIS); // right motor voltage calculation
 
     checkControllerButtonPress(); // Check if any controller buttons are pressed
-    // updatePneumatics();           // Update pneumatics based on bool/enum
-    // states
-    updateBallConveyorMotors();
+    updateBallConveyorMotors();   // handle the enum that controlls the ball
+                                  // conveyors
     setActiveUser();
     handleDriving(LEFT_Y_AXIS, RIGHT_X_AXIS, RIGHT_Y_AXIS, left_motor_voltage,
                   right_motor_voltage);
