@@ -196,6 +196,7 @@ void disabled() {
  */
 void competition_initialize() {}
 
+// function to update conveyor motors based on enum states
 void updateBallConveyorMotors() {
   switch (current_ball_conveyor_state) {
   case UPPER_GOAL:
@@ -223,6 +224,7 @@ void updateBallConveyorMotors() {
 
 // function to check if any controller buttons are pressed
 void checkControllerButtonPress() {
+  // handle pnuematics on button press
   if (main_controller.get_digital_new_press(CONTROLLER_B)) {
     funnel_engaged = !funnel_engaged;
     funnel_pneumatic_right.set_value(funnel_engaged);
