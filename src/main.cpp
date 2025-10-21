@@ -8,6 +8,7 @@
 #include "pros/rtos.hpp"
 #include "pros/screen.h"
 #include "pros/screen.hpp"
+#include <cstdlib>
 #include <string>
 
 // unused headers:
@@ -109,7 +110,6 @@ enum ball_conveyor_state {
   OUTTAKE,     // outtake balls || spin both down
   STOPPED      // stop both motors
 };
-
 ball_conveyor_state current_ball_conveyor_state;
 
 /**
@@ -138,24 +138,42 @@ protected:
   double SCALE_FACTOR;
   double EXPONENT;
   ControlType control_type;
+  pros::controller_digital_e_t sf_high_goal;   // button for high goal conveyor
+  pros::controller_digital_e_t sf_medium_goal; // buttor for low goal conveyor
+  pros::controller_digital_e_t
+      sf_bottom_goal;                     // button for bottom goal conveyor
+  pros::controller_digital_e_t pn_button; // button for pneumatic toggle
 
 public:
-  //  constructor
+  // constructor
   Users(std::string name, int slew_max, int slew_min, double exponent,
-        double scale_factor, ControlType control)
+        double scale_factor, ControlType control,
+        pros::controller_digital_e_t sf_high_goal,
+        pros::controller_digital_e_t sf_medium_goal,
+        pros::controller_digital_e_t sf_bottom_goal,
+        pros::controller_digital_e_t pn_button)
       : name(name), SLEW_MAX(slew_max), SLEW_MIN(slew_min),
-        SCALE_FACTOR(scale_factor), EXPONENT(exponent), control_type(control) {}
+        SCALE_FACTOR(scale_factor), EXPONENT(exponent), control_type(control),
+        sf_high_goal(sf_high_goal), sf_medium_goal(sf_medium_goal),
+        sf_bottom_goal(sf_bottom_goal), pn_button(pn_button) {}
 
   // setter
   void setDriverInfo(std::string newName, int slew_max, int slew_min,
-                     double exponent, double scale_factor,
-                     ControlType control) {
+                     double exponent, double scale_factor, ControlType control,
+                     pros::controller_digital_e_t sf_high_goal,
+                     pros::controller_digital_e_t sf_medium_goal,
+                     pros::controller_digital_e_t sf_bottom_goal,
+                     pros::controller_digital_e_t pn_button) {
     this->name = newName;
     this->SLEW_MAX = slew_max;
     this->SLEW_MIN = slew_min;
     this->EXPONENT = exponent;
     this->SCALE_FACTOR = scale_factor;
     this->control_type = control;
+    this->sf_high_goal = sf_high_goal;
+    this->sf_medium_goal = sf_medium_goal;
+    this->sf_bottom_goal = sf_bottom_goal;
+    this->pn_button = pn_button;
   }
 
   // getters
@@ -166,13 +184,40 @@ public:
   double getScaleFactor() const { return SCALE_FACTOR; }
   ControlType getControlType() const { return control_type; }
 
+  // getters for keybinds
+  pros::controller_digital_e_t getSfHighGoal() const { return sf_high_goal; }
+  pros::controller_digital_e_t getSfMediumGoal() const {
+    return sf_medium_goal;
+  }
+  pros::controller_digital_e_t getSfBottomGoal() const {
+    return sf_bottom_goal;
+  }
+  pros::controller_digital_e_t getPnButton() const { return pn_button; }
+
   static Users *currentUser;
 };
+// setting order: name, slew acceleration, slew decelleration, exponent, scale
+// factor. keybinds: high goal, medium goal, low goal, pneumatic button
 
-Users eli("Eli  ", 100, 100, 1.9, 1.6, Users::ControlType::Arcade);
-Users lewis("Lewis", 50, 50, 2, 1.3, Users::ControlType::Arcade);
-Users roger("Roger", 40, 40, 2.1, 1.7, Users::ControlType::Tank);
+Users eli("Eli  ", 50, 20, 1.9, 1.6, Users::ControlType::Arcade,
+          pros::E_CONTROLLER_DIGITAL_R1, pros::E_CONTROLLER_DIGITAL_R2,
+          pros::E_CONTROLLER_DIGITAL_L1, pros::E_CONTROLLER_DIGITAL_B);
 
+Users lewis("Lewis", 50, 50, 2, 1.3, Users::ControlType::Arcade,
+            pros::E_CONTROLLER_DIGITAL_R1, pros::E_CONTROLLER_DIGITAL_R2,
+            pros::E_CONTROLLER_DIGITAL_L1, pros::E_CONTROLLER_DIGITAL_B);
+
+Users ian("Ian", 40, 40, 2.1, 1.7, Users::ControlType::Arcade,
+          pros::E_CONTROLLER_DIGITAL_R1, pros::E_CONTROLLER_DIGITAL_R2,
+          pros::E_CONTROLLER_DIGITAL_L1, pros::E_CONTROLLER_DIGITAL_B);
+
+Users sanjith("Sanjith", 20, 30, 2, 1.2, Users::ControlType::Arcade,
+              pros::E_CONTROLLER_DIGITAL_R1, pros::E_CONTROLLER_DIGITAL_R2,
+              pros::E_CONTROLLER_DIGITAL_L1, pros::E_CONTROLLER_DIGITAL_B);
+
+Users TEST_USER("TEST_USER", 20, 30, 3, 1.2, Users::ControlType::Tank,
+                pros::E_CONTROLLER_DIGITAL_R1, pros::E_CONTROLLER_DIGITAL_R2,
+                pros::E_CONTROLLER_DIGITAL_L1, pros::E_CONTROLLER_DIGITAL_B);
 Users *Users::currentUser = &eli; // globally initialize current user as default
 
 /**
@@ -225,30 +270,28 @@ void updateBallConveyorMotors() {
 // function to check if any controller buttons are pressed
 void checkControllerButtonPress() {
   // handle pnuematics on button press
-  if (main_controller.get_digital_new_press(CONTROLLER_B)) {
+  if (main_controller.get_digital_new_press(
+          Users::currentUser->getPnButton())) {
     funnel_engaged = !funnel_engaged;
     funnel_pneumatic_right.set_value(funnel_engaged);
     funnel_pneumatic_left.set_value(funnel_engaged);
-  } else if (main_controller.get_digital_new_press(CONTROLLER_R1)) {
+  } else if (main_controller.get_digital_new_press(
+                 Users::currentUser->getSfMediumGoal())) {
     // for toggleable button
-    if (current_ball_conveyor_state == MIDDLE_GOAL) {
-      current_ball_conveyor_state = STOPPED;
-    } else if (current_ball_conveyor_state == STOPPED) {
-      current_ball_conveyor_state = MIDDLE_GOAL;
-    } else {
-      current_ball_conveyor_state = MIDDLE_GOAL;
-    }
-  } else if (main_controller.get_digital_new_press(CONTROLLER_R2)) {
+    current_ball_conveyor_state =
+        (current_ball_conveyor_state == MIDDLE_GOAL) ? STOPPED : MIDDLE_GOAL;
+  } else if (main_controller.get_digital_new_press(
+                 Users::currentUser->getSfHighGoal())) {
     // for toggelable button
-    if (current_ball_conveyor_state == UPPER_GOAL) {
-      current_ball_conveyor_state = STOPPED;
-    } else if (current_ball_conveyor_state == STOPPED) {
-      current_ball_conveyor_state = UPPER_GOAL;
-    } else {
-      // if in middle goal state, switch to upper goal state
-      current_ball_conveyor_state = UPPER_GOAL;
-    }
-  } else if (main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_A)) {
+    current_ball_conveyor_state =
+        (current_ball_conveyor_state == UPPER_GOAL) ? STOPPED : UPPER_GOAL;
+  } else if (main_controller.get_digital_new_press(
+                 Users::currentUser->getSfBottomGoal())) {
+    current_ball_conveyor_state =
+        (current_ball_conveyor_state == OUTTAKE) ? STOPPED : OUTTAKE;
+  }
+
+  else if (main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_A)) {
     chassis.setPose(0, 0, 0);
     chassis.cancelAllMotions();
     main_controller.print(0, 0, "Pose reset to 0,0,0");
@@ -302,8 +345,8 @@ double MIN_DELTA = 2;
 double scale_factor = 2;
 double EXPONENT = 1.7;
 
-int track_user = 0;
-constexpr auto sizeOfUsers = 3;
+int track_user = 1;
+constexpr auto sizeOfUsers = 5;
 void setActiveUser() {
   if (main_controller.get_digital_new_press(CONTROLLER_UP) &&
       main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_L2) &&
@@ -327,11 +370,20 @@ void setActiveUser() {
     Users::currentUser = &lewis;
     break;
   case 3:
-    Users::currentUser = &roger;
+    Users::currentUser = &ian;
+    break;
+  case 4:
+    Users::currentUser = &sanjith;
     break;
   default:
     Users::currentUser = &eli;
     break;
+  }
+
+  if (main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_L1) &&
+      main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_L2) &&
+      main_controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_RIGHT)) {
+    Users::currentUser = &TEST_USER;
   }
 
   // update variables
@@ -339,6 +391,8 @@ void setActiveUser() {
   MIN_DELTA = Users::currentUser->getSlewMin();
   scale_factor = Users::currentUser->getScaleFactor();
   EXPONENT = Users::currentUser->getExponent();
+  // we do not need to update certain members like the keybinds and the drive
+  // types because there is nothing to update them to
 }
 
 double expo_joystick(int input) {
@@ -407,12 +461,6 @@ void handleDriving(int LEFT_Y_AXIS, int RIGHT_X_AXIS, int RIGHT_Y_AXIS,
   }
 }
 
-// double floatLimited(double value) {
-//     char buffer[16]; // buffer to hold the formatted string
-//     sprintf(buffer, "%.1f", value); // format to 3 decimal places
-//     return buffer;
-// }
-
 void printDebug(double LEFT_Y_AXIS, double RIGHT_X_AXIS, float left_motor_v,
                 float right_motor_v) {
 
@@ -465,12 +513,10 @@ void printDebug(double LEFT_Y_AXIS, double RIGHT_X_AXIS, float left_motor_v,
 
   pros::screen::print(pros::E_TEXT_SMALL, 25, 140, "X Vel: %.2f | ", vx);
   pros::screen::print(pros::E_TEXT_SMALL, 140, 140, "Y Vel: %.2f", vy);
-  //--------------Prints for controller screen
-  // main_controller.print(0, 0, "Current User: %s ",
-  //                       Users::currentUser->getName());
+  //--------------Prints for controller screen----------------------//
+
   char buffer[21]; // character limit of controller display
-  sprintf(buffer, "H: %3.1f|X: %3.1f|Y: %.1f", correctedHeading, pose.x,
-          pose.y);
+  sprintf(buffer, "H: %.1f|X: %.1f|Y: %.1f", correctedHeading, pose.x, pose.y);
   main_controller.print(0, 0, buffer);
 }
 
@@ -503,6 +549,15 @@ void autonomous() {}
 
 void opcontrol() {
   while (true) {
+    // make sure that the Users::currentUser contains a valid pointer
+    if (Users::currentUser == nullptr) {
+      pros::screen::print(
+          pros::E_TEXT_SMALL, 100, 300,
+          "ERROR. NULLPTR ON POINTER 'Users::currentUser'. EXITING");
+      while (true) {
+        pros::delay(100); // prevent resets, keep message on screen
+      }
+    }
     // init variables for joystick values
     int LEFT_Y_AXIS = main_controller.get_analog(CONTROLLER_LEFT_Y);
     int RIGHT_X_AXIS = main_controller.get_analog(CONTROLLER_RIGHT_X);
