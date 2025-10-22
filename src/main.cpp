@@ -386,7 +386,6 @@ void setActiveUser() {
   // we do not need to update certain members like the keybinds and the drive
   // types because there is nothing to update them to
 }
-
 double expo_joystick(int input) {
   // function to apply an exponential curve to the input.
   // is is applyed to the fowards and turn values in opcontrol()
