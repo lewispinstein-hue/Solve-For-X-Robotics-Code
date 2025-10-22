@@ -107,19 +107,19 @@ void initialize() {
 }
 
 // visit users_class.h for User setup explanation
-Users eli("Eli  ", 50, 20, 1.9, 1.6, Users::ControlType::Arcade,
-          pros::E_CONTROLLER_DIGITAL_R1, pros::E_CONTROLLER_DIGITAL_R2,
-          pros::E_CONTROLLER_DIGITAL_L1, pros::E_CONTROLLER_DIGITAL_B);
+Users eli("Eli  ", 15, 30, 1.0, 1.6, Users::ControlType::Arcade,
+          pros::E_CONTROLLER_DIGITAL_R2, pros::E_CONTROLLER_DIGITAL_R1,
+          pros::E_CONTROLLER_DIGITAL_L2, pros::E_CONTROLLER_DIGITAL_B);
 
-Users lewis("Lewis", 10, 15, 2, 1.3, Users::ControlType::Arcade,
-            pros::E_CONTROLLER_DIGITAL_R1, pros::E_CONTROLLER_DIGITAL_R2,
-            pros::E_CONTROLLER_DIGITAL_L1, pros::E_CONTROLLER_DIGITAL_B);
+Users lewis("Lewis", 15, 30, 2, 1.6, Users::ControlType::Arcade,
+            pros::E_CONTROLLER_DIGITAL_R2, pros::E_CONTROLLER_DIGITAL_R1,
+            pros::E_CONTROLLER_DIGITAL_L2, pros::E_CONTROLLER_DIGITAL_B);
 
-Users ian("Ian", 40, 40, 2.1, 1.7, Users::ControlType::Arcade,
-          pros::E_CONTROLLER_DIGITAL_R1, pros::E_CONTROLLER_DIGITAL_R2,
-          pros::E_CONTROLLER_DIGITAL_L1, pros::E_CONTROLLER_DIGITAL_B);
+Users ian("Ian", 20, 30, 2.1, 1.5, Users::ControlType::Arcade,
+          pros::E_CONTROLLER_DIGITAL_R2, pros::E_CONTROLLER_DIGITAL_R1,
+          pros::E_CONTROLLER_DIGITAL_L2, pros::E_CONTROLLER_DIGITAL_A);
 
-Users sanjith("Sanjith", 20, 30, 2, 1.2, Users::ControlType::Arcade,
+Users sanjith("Sanjith", 20, 30, 3, 1.2, Users::ControlType::Arcade,
               pros::E_CONTROLLER_DIGITAL_R1, pros::E_CONTROLLER_DIGITAL_R2,
               pros::E_CONTROLLER_DIGITAL_L1, pros::E_CONTROLLER_DIGITAL_B);
 
@@ -240,10 +240,8 @@ double slewLimit(double target, double prev, double riseMaxDelta,
       absDelta = fallMaxDelta;
     }
   }
-
   // Reapply original sign
   double limitedDelta = (delta >= 0) ? absDelta : -absDelta;
-
   return prev + limitedDelta;
 }
 
