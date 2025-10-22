@@ -21,18 +21,10 @@
 //  #include "pros/llemu.hpp"
 
 // defines for controller buttons for readability
-#define CONTROLLER_R1 pros::E_CONTROLLER_DIGITAL_R1
-#define CONTROLLER_R2 pros::E_CONTROLLER_DIGITAL_R2
-#define CONTROLLER_L1 pros::E_CONTROLLER_DIGITAL_L1
-#define CONTROLLER_L2 pros::E_CONTROLLER_DIGITAL_L2
-#define CONTROLLER_B pros::E_CONTROLLER_DIGITAL_B
-#define CONTROLLER_LEFT pros::E_CONTROLLER_DIGITAL_LEFT
-#define CONTROLLER_RIGHT pros::E_CONTROLLER_DIGITAL_RIGHT
 #define CONTROLLER_UP pros::E_CONTROLLER_DIGITAL_UP
 #define CONTROLLER_DOWN pros::E_CONTROLLER_DIGITAL_DOWN
 
 // define joysticks
-#define CONTROLLER_LEFT_X pros::E_CONTROLLER_ANALOG_LEFT_X
 #define CONTROLLER_LEFT_Y pros::E_CONTROLLER_ANALOG_LEFT_Y
 #define CONTROLLER_RIGHT_X pros::E_CONTROLLER_ANALOG_RIGHT_X
 #define CONTROLLER_RIGHT_Y pros::E_CONTROLLER_ANALOG_RIGHT_Y
@@ -96,7 +88,7 @@ lemlib::Drivetrain main_drivetrain(
     &right_motors_drivetrain, // right motor group
     7.5, // track width in inches (measure center-to-center of wheels)
     lemlib::Omniwheel::NEW_325, // 3.25" omni wheels
-    600, // wheel RPM (green cartridge = 200, blue = 600, red = 100)
+    900, // wheel RPM (green cartridge = 200, blue = 600, red = 100)
     2    // chase power (leave as 2 unless tuning)
 );
 
