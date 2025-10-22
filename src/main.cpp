@@ -1,24 +1,10 @@
 #include "main.h"
 #include "lemlib/chassis/chassis.hpp"
-#include "pros/abstract_motor.hpp"
-#include "pros/adi.hpp"
-#include "pros/colors.hpp"
-#include "pros/misc.h"
-#include "pros/motor_group.hpp"
-#include "pros/rtos.hpp"
-#include "pros/screen.h"
-#include "pros/screen.hpp"
 #include <cstdlib>
 #include <string>
 
-// unused headers:
-//  #include "pros/rotation.h"
-//  #include "pros/rotation.hpp"
-//  #include "pros/motors.h"
-//  #include "lemlib/chassis/odom.hpp"
-//  #include "lemlib/api.hpp"
-//  #include "liblvgl/llemu.hpp"
-//  #include "pros/llemu.hpp"
+//my helper files
+#include "users_class.h"
 
 // defines for controller buttons for readability
 #define CONTROLLER_UP pros::E_CONTROLLER_DIGITAL_UP
@@ -119,83 +105,13 @@ void initialize() {
   current_ball_conveyor_state = STOPPED; // initial state
   funnel_engaged = false;
 }
-class Users {
-public:
-  enum class ControlType { Arcade, Tank };
 
-protected:
-  std::string name;
-  int SLEW_MAX;
-  int SLEW_MIN;
-  double SCALE_FACTOR;
-  double EXPONENT;
-  ControlType control_type;
-  pros::controller_digital_e_t sf_high_goal;   // button for high goal conveyor
-  pros::controller_digital_e_t sf_medium_goal; // buttor for low goal conveyor
-  pros::controller_digital_e_t
-      sf_bottom_goal;                     // button for bottom goal conveyor
-  pros::controller_digital_e_t pn_button; // button for pneumatic toggle
-
-public:
-  // constructor
-  Users(std::string name, int slew_max, int slew_min, double exponent,
-        double scale_factor, ControlType control,
-        pros::controller_digital_e_t sf_high_goal,
-        pros::controller_digital_e_t sf_medium_goal,
-        pros::controller_digital_e_t sf_bottom_goal,
-        pros::controller_digital_e_t pn_button)
-      : name(name), SLEW_MAX(slew_max), SLEW_MIN(slew_min),
-        SCALE_FACTOR(scale_factor), EXPONENT(exponent), control_type(control),
-        sf_high_goal(sf_high_goal), sf_medium_goal(sf_medium_goal),
-        sf_bottom_goal(sf_bottom_goal), pn_button(pn_button) {}
-
-  // setter
-  void setDriverInfo(std::string newName, int slew_max, int slew_min,
-                     double exponent, double scale_factor, ControlType control,
-                     pros::controller_digital_e_t sf_high_goal,
-                     pros::controller_digital_e_t sf_medium_goal,
-                     pros::controller_digital_e_t sf_bottom_goal,
-                     pros::controller_digital_e_t pn_button) {
-    this->name = newName;
-    this->SLEW_MAX = slew_max;
-    this->SLEW_MIN = slew_min;
-    this->EXPONENT = exponent;
-    this->SCALE_FACTOR = scale_factor;
-    this->control_type = control;
-    this->sf_high_goal = sf_high_goal;
-    this->sf_medium_goal = sf_medium_goal;
-    this->sf_bottom_goal = sf_bottom_goal;
-    this->pn_button = pn_button;
-  }
-
-  // getters
-  std::string getName() const { return name; }
-  int getSlewMax() const { return SLEW_MAX; }
-  int getSlewMin() const { return SLEW_MIN; }
-  double getExponent() const { return EXPONENT; }
-  double getScaleFactor() const { return SCALE_FACTOR; }
-  ControlType getControlType() const { return control_type; }
-
-  // getters for keybinds
-  pros::controller_digital_e_t getSfHighGoal() const { return sf_high_goal; }
-  pros::controller_digital_e_t getSfMediumGoal() const {
-    return sf_medium_goal;
-  }
-  pros::controller_digital_e_t getSfBottomGoal() const {
-    return sf_bottom_goal;
-  }
-  pros::controller_digital_e_t getPnButton() const { return pn_button; }
-
-  static Users *currentUser;
-};
-// setting order: name, slew acceleration, slew decelleration, exponent, scale
-// factor. keybinds: high goal, medium goal, low goal, pneumatic button
-
+// visit users_class.h for User setup explanation
 Users eli("Eli  ", 50, 20, 1.9, 1.6, Users::ControlType::Arcade,
           pros::E_CONTROLLER_DIGITAL_R1, pros::E_CONTROLLER_DIGITAL_R2,
           pros::E_CONTROLLER_DIGITAL_L1, pros::E_CONTROLLER_DIGITAL_B);
 
-Users lewis("Lewis", 50, 50, 2, 1.3, Users::ControlType::Arcade,
+Users lewis("Lewis", 10, 15, 2, 1.3, Users::ControlType::Arcade,
             pros::E_CONTROLLER_DIGITAL_R1, pros::E_CONTROLLER_DIGITAL_R2,
             pros::E_CONTROLLER_DIGITAL_L1, pros::E_CONTROLLER_DIGITAL_B);
 
