@@ -1,11 +1,13 @@
 #include "main.h"
 #include "lemlib/chassis/chassis.hpp"
 #include "pros/screen.h"
+#include <array>
+#include <cstdint>
 #include <cstdlib>
 #include <string>
 
 // my helper files
-#include "users_class.cpp"
+#include "users_class.h"
 
 // defines for controller buttons for readability
 #define CONTROLLER_UP pros::E_CONTROLLER_DIGITAL_UP
@@ -95,6 +97,9 @@ enum ball_conveyor_state {
 };
 ball_conveyor_state current_ball_conveyor_state;
 
+// foward declaration for tests
+int testExpoJoystick();
+int testCustomClamp();
 /**
  * Runs initialization code. This occurs as soon as the program is started.
  *
@@ -111,6 +116,10 @@ void initialize() {
   right_motors_drivetrain.set_brake_mode(pros::MotorBrake::brake);
 
   current_ball_conveyor_state = STOPPED; // initial state
+
+  // verify that expoJoystick is working propperly
+  testExpoJoystick();
+  pros::delay(3000); // wait 3 sec to see what is on screen
 }
 
 // visit users_class.h for User setup explanation
@@ -312,7 +321,7 @@ void setActiveUser() {
   // we do not need to update certain members like the keybinds and the drive
   // types because there is nothing to update them to
 }
-double expo_joystick(int input) {
+double expo_joystick(int input, double EXPONENT) {
   // function to apply an exponential curve to the input.
   // is is applyed to the fowards and turn values in opcontrol()
   double normalized = (double)input / 127.0;       // normalize to [-1, 1]
@@ -374,8 +383,8 @@ void handleDriving(int LEFT_Y_AXIS, int RIGHT_X_AXIS, int RIGHT_Y_AXIS,
         left_motor_voltage,
         right_motor_voltage); // Handle drive control and motor calc
   } else if (Users::currentUser->getControlType() == Users::ControlType::Tank) {
-    left_motor_voltage = expo_joystick(LEFT_Y_AXIS);
-    right_motor_voltage = expo_joystick(RIGHT_Y_AXIS);
+    left_motor_voltage = expo_joystick(LEFT_Y_AXIS, EXPONENT);
+    right_motor_voltage = expo_joystick(RIGHT_Y_AXIS, EXPONENT);
   }
 }
 
@@ -463,20 +472,102 @@ void autonomous() {}
  * task, not resume it from where it left off.
  */
 
-//  int testExpoJoystick() {
-//   double test1 = expo_joystick(1);
-//   double test2 = expo_joystick(127);
-//   if (test1 != 1) {
+int testExpoJoystick() {
 
-//   }
-//  }
+  pros::screen::erase();
+  printToBrain(smallText, 1, "Running expo_joystick test...");
+  pros::delay(1000);
+  pros::screen::erase();
+
+  // what we are testing
+  std::array<double, 8> inputCases = {// input
+                                      1, 64, 63, 127,
+                                      // exponent
+                                      1, 1.2, 3.1, 2};
+  // the output of the check
+  std::array<double, 4> testOutputs;
+  // Expected results, rounded to one decimal place to account for floating
+  // point
+  std::array<double, 4> expectedResults = {1.0, 55.8, 13.5, 127.0};
+
+  int tests_passed = 0;
+  const double TOLERANCE = 0.1;
+
+  // start for loop that checks each case against the function
+  for (int i = 0; i < testOutputs.size(); i++) {
+    // create first variable for expo_joysick (input)
+    int testInput = static_cast<int>(inputCases[i]);
+    // create second variable for expo_joystick (EXPONENT)
+    double exponent = inputCases[i + 4];
+    // assign value for later comparison
+    testOutputs[i] = expo_joystick(testInput, exponent);
+
+    // Use a floating-point comparison with a tolerance
+    if (fabs(testOutputs[i] - expectedResults[i]) < TOLERANCE) {
+      // print result to brain
+      printToBrain(smallText, i + 2, "Test %d passed.", i);
+      // Add a value to the output, 1 for each pass
+      tests_passed += 1;
+    } else {
+      // print to brain details of failed test
+      printToBrain(smallText, i + 2, "Test %d Failed. Expected: %.2f, got %.2f",
+                   expectedResults[i], testOutputs[i]);
+    }
+  }
+  // print final summary to brain
+  printToBrain(smallText, 7, "Tests passed: %d/%d", tests_passed,
+               testOutputs.size());
+  // return tests failed
+  return tests_passed;
+}
+
+int testCustomClamp() {
+  pros::screen::erase();
+  printToBrain(smallText, 1, "Running custom_clamp test...");
+  pros::delay(1000);
+  pros::screen::erase();
+
+  // order for checks
+  //  pass through, cap max, cap min, negative cap min
+  std::array<double, 12> inputCases = {// max clamp
+                                       400, -200, 609, -102,
+                                       // input
+                                       305, -102, 491, -230,
+                                       // min clamp
+                                       200, -400, 506, -215};
+  // what the function returns
+  std::array<double, 4> testOutputs;
+  // expected returns
+  std::array<double, 4> expectedReturns = {305, -200, 506, -215};
+  double tests_passed = 0;
+  for (int i = 0; i < expectedReturns.size(); i++) {
+    double max_clamp = inputCases[i];
+    double input = inputCases[i + 4];
+    double min_clamp = inputCases[i + 8];
+    testOutputs[i] = custom_clamp(input, min_clamp, max_clamp);
+    if (std::fabs(testOutputs[i] - expectedReturns[i]) < 0.01) {
+      // print result to brain
+      printToBrain(smallText, i + 1, "Test %d passed.", i);
+      // Add a value to the output, 1 for each pass
+      tests_passed += 1;
+    } else {
+      // print to brain details of failed test
+      printToBrain(smallText, i + 2, "Test %d Failed. Expected: %.2f, got %.2f",
+                   i, expectedReturns[i], testOutputs[i]);
+    }
+  }
+  // print final summary to brain
+  printToBrain(smallText, 7, "Tests passed: %d/%d", tests_passed,
+               testOutputs.size());
+  return tests_passed;
+}
 
 void opcontrol() {
   while (true) {
     // make sure that the Users::currentUser contains a valid pointer
     if (Users::currentUser == nullptr) {
       printToBrain(smallText, 100, 300,
-                   "ERROR. NULLPTR ON POINTER 'Users::currentUser'. EXITING");
+                   "ERROR. NULLPTR ON POINTER 'Users::currentUser'. STOPPING");
       while (true) {
         pros::delay(100); // prevent resets, keep message on screen
       }
@@ -492,8 +583,8 @@ void opcontrol() {
     if (abs(RIGHT_X_AXIS) < 5)
       RIGHT_X_AXIS = 0;
 
-    double forward = expo_joystick(LEFT_Y_AXIS);
-    double turn = expo_joystick(RIGHT_X_AXIS);
+    double forward = expo_joystick(LEFT_Y_AXIS, EXPONENT);
+    double turn = expo_joystick(RIGHT_X_AXIS, EXPONENT);
     double left_motor_voltage = forward + turn;
     double right_motor_voltage = forward - turn;
 

@@ -26,7 +26,7 @@
 **/
 
 /**
- * @example
+ * @example 
  **/
 
 class Users {
