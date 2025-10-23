@@ -7,8 +7,9 @@
 #include <string>
 
 // my helper files
+#include "pros/screen.hpp"
+#include "test_class.h"
 #include "users_class.h"
-
 // defines for controller buttons for readability
 #define CONTROLLER_UP pros::E_CONTROLLER_DIGITAL_UP
 #define CONTROLLER_DOWN pros::E_CONTROLLER_DIGITAL_DOWN
@@ -103,8 +104,8 @@ enum ball_conveyor_state {
 ball_conveyor_state current_ball_conveyor_state;
 
 // foward declaration for tests
-int testExpoJoystick(int delay, bool printResults);
-int testCustomClamp(int delay, bool printResults);
+double expo_joystick(double input, double EXPONENT);
+double custom_clamp(double, double, double);
 /**
  * Runs initialization code. This occurs as soon as the program is started.
  *
@@ -113,26 +114,41 @@ int testCustomClamp(int delay, bool printResults);
  */
 
 void handleTests() {
-  int expoResult = testExpoJoystick(100, false);
-  if (expoResult == 4) {
-    printToBrain(smallText, 1,
-                 "Exponential Joystick Test Sucess: %d/4 tests passed",
-                 expoResult);
-    pros::delay(1000);
+  constexpr double TOLERANCE = 0.05;
+  int tests_passed;
+  // Initialize Test object
+  Test testExpoJoystick({1, 64, 63, 127}, {1, 1.2, 3.1, 2}, {},
+                        {1.0, 55.8, 14.5, 127.0}, expo_joystick, TOLERANCE);
+  tests_passed += testExpoJoystick.runTestsArgs2(1000, true);
+  // tesing custom clamp
+  Test customClampTest({305, -102, 491, -230}, {200, -400, 506, -215},
+                       {400, -200, 609, -102}, {305, -200, 506, -215},
+                       custom_clamp, TOLERANCE);
+  tests_passed += customClampTest.runTestsArgs3(1000, true);
 
-  } else {
-    testExpoJoystick(500, true);
-    pros::delay(800);
-  }
+  // print summary
+  printToBrain(smallText, 25, 100, "Summary: ");
+  printToBrain(smallText, 25, 120, "Tests run: 2");
+  printToBrain(smallText, 25, 140, "Tests passed: %d", tests_passed);
+  printToBrain(smallText, 25, 160, "Would you like to run tests again?");
 
-  pros::delay(300);
-  int clampResult = testCustomClamp(100, false);
-  if (clampResult == 4) {
-    printToBrain(smallText, 1, "Custom Clamp Test Sucess: %d/4 tests passed",
-                 clampResult);
-  } else {
-    testCustomClamp(1000, true);
-    pros::delay(1000);
+  bool testAgain = true;
+
+  while (testAgain) {
+    if (main_controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_A)) {
+      pros::screen::erase();
+      printToBrain(smallText, 25, 100, "Running Tests again...");
+      pros::delay(300);
+      testExpoJoystick.runTestsArgs2(3000, true);
+      customClampTest.runTestsArgs3(3000, true);
+      testAgain = false;
+    } else if (main_controller.get_digital_new_press(
+                   pros::E_CONTROLLER_DIGITAL_X)) {
+      pros::screen::erase();
+      printToBrain(smallText, 25, 100, "Continuing program...");
+      testAgain = false;
+      return;
+    }
   }
 }
 
@@ -155,7 +171,7 @@ void initialize() {
 }
 
 // visit users_class.h for User setup explanation
-Users eli("Eli  ", 15, 30, 1.0, 1.6, Users::ControlType::Arcade,
+Users eli("Eli   ", 15, 30, 1.0, 1.6, Users::ControlType::Arcade,
           pros::E_CONTROLLER_DIGITAL_R2, pros::E_CONTROLLER_DIGITAL_R1,
           pros::E_CONTROLLER_DIGITAL_L2, pros::E_CONTROLLER_DIGITAL_B);
 
@@ -190,8 +206,8 @@ void disabled() {
 /**
  * Runs after initialize(), and before autonomous when connected to the Field
  * Management System or the VEX Competition Switch. This is intended for
- * competition-specific initialization routines, such as an autonomous selector
- * on the LCD.
+ * competition-specific initialization routines, such as an autonomous
+ * selector on the LCD.
  *
  * This task will exit when the robot is enabled and autonomous or opcontrol
  * starts.
@@ -351,15 +367,15 @@ void setActiveUser() {
   // types because there is nothing to update them to
 }
 
-double expo_joystick(int input, double EXPONENT) {
+double expo_joystick(double input, double EXPONENT) {
   // function to apply an exponential curve to the input.
   // is is applyed to the fowards and turn values in opcontrol()
   double normalized = (double)input / 127.0;       // normalize to [-1, 1]
   double curved = pow(fabs(normalized), EXPONENT); // apply exponential curve
   curved = curved * (normalized >= 0 ? 1 : -1);    // restore sign
 
-  // if the output would be too large, dont change the number and pass it off to
-  // the difference calculations
+  // if the output would be too large, dont change the number and pass it off
+  // to the difference calculations
   if (curved >= 1 || curved <= -1) {
     return input;
   }
@@ -405,7 +421,7 @@ void handleArcadeControl(double &left_motor_voltage,
   }
 }
 
-//forward declaration 
+// forward declaration
 void handleSlewControl(double &left_motor_voltage, double &right_motor_volatge);
 
 void handleDriving(int LEFT_Y_AXIS, int RIGHT_X_AXIS, int RIGHT_Y_AXIS,
@@ -422,26 +438,25 @@ void handleDriving(int LEFT_Y_AXIS, int RIGHT_X_AXIS, int RIGHT_Y_AXIS,
   handleSlewControl(left_motor_voltage, right_motor_voltage);
 }
 
-void handleSlewControl(double &left_motor_voltage, double& right_motor_voltage) {
-   // comparing cases for slew
-    static double prev_left_voltage = 0;
-    static double prev_right_voltage = 0;
+void handleSlewControl(double &left_motor_voltage,
+                       double &right_motor_voltage) {
+  // comparing cases for slew
+  static double prev_left_voltage = 0;
+  static double prev_right_voltage = 0;
 
-    // slew control
-    left_motor_voltage =
-        slewLimit(left_motor_voltage, prev_left_voltage, MAX_DELTA, MIN_DELTA);
-    right_motor_voltage = slewLimit(right_motor_voltage, prev_right_voltage,
-                                    MAX_DELTA, MIN_DELTA);
+  // slew control
+  left_motor_voltage =
+      slewLimit(left_motor_voltage, prev_left_voltage, MAX_DELTA, MIN_DELTA);
+  right_motor_voltage =
+      slewLimit(right_motor_voltage, prev_right_voltage, MAX_DELTA, MIN_DELTA);
 
-    // update slew limiters
-    prev_left_voltage = left_motor_voltage;
-    prev_right_voltage = right_motor_voltage;
+  // update slew limiters
+  prev_left_voltage = left_motor_voltage;
+  prev_right_voltage = right_motor_voltage;
 
-    // double check to make sure we are in range
-    left_motor_voltage = custom_clamp(left_motor_voltage, -127, 127);
-    right_motor_voltage = custom_clamp(right_motor_voltage, -127, 127);
-
-
+  // double check to make sure we are in range
+  left_motor_voltage = custom_clamp(left_motor_voltage, -127, 127);
+  right_motor_voltage = custom_clamp(right_motor_voltage, -127, 127);
 }
 
 void printDebug(double LEFT_Y_AXIS, double RIGHT_X_AXIS, float left_motor_v,
@@ -502,84 +517,31 @@ void printDebug(double LEFT_Y_AXIS, double RIGHT_X_AXIS, float left_motor_v,
 }
 
 /**
- * Runs the user autonomous code. This function will be started in its own task
- * with the default priority and stack size whenever the robot is enabled via
- * the Field Management System or the VEX Competition Switch in the autonomous
- * mode. Alternatively, this function may be called in initialize or opcontrol
- * for non-competition testing purposes.
+ * Runs the user autonomous code. This function will be started in its own
+ * task with the default priority and stack size whenever the robot is enabled
+ * via the Field Management System or the VEX Competition Switch in the
+ * autonomous mode. Alternatively, this function may be called in initialize
+ * or opcontrol for non-competition testing purposes.
  *
  * If the robot is disabled or communications is lost, the autonomous task
- * will be stopped. Re-enabling the robot will restart the task, not re-start it
- * from where it left off.
+ * will be stopped. Re-enabling the robot will restart the task, not re-start
+ * it from where it left off.
  */
 void autonomous() {}
 
 /**
- * Runs the operator control code. This function will be started in its own task
- * with the default priority and stack size whenever the robot is enabled via
- * the Field Management System or the VEX Competition Switch in the operator
- * control mode.
+ * Runs the operator control code. This function will be started in its own
+ * task with the default priority and stack size whenever the robot is enabled
+ * via the Field Management System or the VEX Competition Switch in the
+ * operator control mode.
  *
  * If no competition control is connected, this function will run immediately
  * following initialize().
  *
  * If the robot is disabled or communications is lost, the
- * operator control task will be stopped. Re-enabling the robot will restart the
- * task, not resume it from where it left off.
+ * operator control task will be stopped. Re-enabling the robot will restart
+ * the task, not resume it from where it left off.
  */
-
-int testExpoJoystick(int delay, bool printResults) {
-
-  pros::screen::erase();
-  printToBrain(smallText, 1, "Running expo_joystick test...");
-  pros::delay(delay);
-  pros::screen::erase();
-
-  // what we are testing
-  std::array<double, 8> inputCases = {// input
-                                      1, 64, 63, 127,
-                                      // exponent
-                                      1, 1.2, 3.1, 2};
-  // the output of the check
-  std::array<double, 4> testOutputs;
-  // Expected results, rounded to one decimal place to account for floating
-  // point
-  std::array<double, 4> expectedResults = {1.0, 55.8, 13.5, 127.0};
-
-  int tests_passed = 0;
-  const double TOLERANCE = 0.1;
-
-  // start for loop that checks each case against the function
-  for (int i = 0; i < testOutputs.size(); i++) {
-    // create first variable for expo_joysick (input)
-    int testInput = static_cast<int>(inputCases[i]);
-    // create second variable for expo_joystick (EXPONENT)
-    double exponent = inputCases[i + 4];
-    // assign value for later comparison
-    testOutputs[i] = expo_joystick(testInput, exponent);
-
-    // Use a floating-point comparison with a tolerance
-    if (fabs(testOutputs[i] - expectedResults[i]) < TOLERANCE) {
-      if (printResults) {
-        // print result to brain
-        printToBrain(smallText, i + 2, "Test %d passed.", i);
-      }
-      // Add a value to the output, 1 for each pass
-      tests_passed += 1;
-    } else if (printResults) {
-      // print to brain details of failed test
-      printToBrain(smallText, i + 2, "Test %d Failed. Expected: %.2f, got %.2f",
-                   expectedResults[i], testOutputs[i]);
-    }
-  }
-  if (printResults) {
-    // print final summary to brain
-    printToBrain(smallText, 7, "Tests passed: %d/%d", tests_passed,
-                 testOutputs.size());
-  }
-  // return tests failed
-  return tests_passed;
-}
 
 int testCustomClamp(int delay, bool printResults) {
   pros::screen::erase();
@@ -655,13 +617,13 @@ void opcontrol() {
     double left_motor_voltage = forward + turn;
     double right_motor_voltage = forward - turn;
 
-    checkControllerButtonPress(); // Check if any controller buttons are pressed
+    checkControllerButtonPress(); // Check if any controller buttons are
+                                  // pressed
     updateBallConveyorMotors();   // handle the enum that controlls the ball
                                   // conveyors
     setActiveUser();
     handleDriving(LEFT_Y_AXIS, RIGHT_X_AXIS, RIGHT_Y_AXIS, left_motor_voltage,
                   right_motor_voltage);
-
 
     left_motors_drivetrain.move(left_motor_voltage);
     right_motors_drivetrain.move(right_motor_voltage);
