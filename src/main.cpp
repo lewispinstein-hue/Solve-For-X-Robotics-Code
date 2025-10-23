@@ -98,14 +98,38 @@ enum ball_conveyor_state {
 ball_conveyor_state current_ball_conveyor_state;
 
 // foward declaration for tests
-int testExpoJoystick();
-int testCustomClamp();
+int testExpoJoystick(int delay, bool printResults);
+int testCustomClamp(int delay, bool printResults);
 /**
  * Runs initialization code. This occurs as soon as the program is started.
  *
  * All other competition modes are blocked by initialize; it is recommended
  * to keep execution time for this mode under a few seconds.
  */
+
+void handleTests() {
+  int expoResult = testExpoJoystick(100, false);
+  if (expoResult == 4) {
+    printToBrain(smallText, 1,
+                 "Exponential Joystick Test Sucess: %d/4 tests passed",
+                 expoResult);
+    pros::delay(1000);
+
+  } else {
+    testExpoJoystick(1000, true);
+    pros::delay(1000);
+  }
+
+  pros::delay(300);
+  int clampResult = testCustomClamp(100, false);
+  if (clampResult == 4) {
+    printToBrain(smallText, 1, "Custom Clamp Test Sucess: %d/4 tests passed",
+                 clampResult);
+  } else {
+    testCustomClamp(1000, true);
+    pros::delay(1000);
+  }
+}
 
 void initialize() {
   // calibrate lemlib stuff
@@ -117,9 +141,8 @@ void initialize() {
 
   current_ball_conveyor_state = STOPPED; // initial state
 
-  // verify that expoJoystick is working propperly
-  testExpoJoystick();
-  pros::delay(3000); // wait 3 sec to see what is on screen
+  // verify tests
+  handleTests();
 }
 
 // visit users_class.h for User setup explanation
@@ -472,11 +495,11 @@ void autonomous() {}
  * task, not resume it from where it left off.
  */
 
-int testExpoJoystick() {
+int testExpoJoystick(int delay, bool printResults) {
 
   pros::screen::erase();
   printToBrain(smallText, 1, "Running expo_joystick test...");
-  pros::delay(1000);
+  pros::delay(delay);
   pros::screen::erase();
 
   // what we are testing
@@ -504,27 +527,31 @@ int testExpoJoystick() {
 
     // Use a floating-point comparison with a tolerance
     if (fabs(testOutputs[i] - expectedResults[i]) < TOLERANCE) {
-      // print result to brain
-      printToBrain(smallText, i + 2, "Test %d passed.", i);
+      if (printResults) {
+        // print result to brain
+        printToBrain(smallText, i + 2, "Test %d passed.", i);
+      }
       // Add a value to the output, 1 for each pass
       tests_passed += 1;
-    } else {
+    } else if (printResults) {
       // print to brain details of failed test
       printToBrain(smallText, i + 2, "Test %d Failed. Expected: %.2f, got %.2f",
                    expectedResults[i], testOutputs[i]);
     }
   }
-  // print final summary to brain
-  printToBrain(smallText, 7, "Tests passed: %d/%d", tests_passed,
-               testOutputs.size());
+  if (printResults) {
+    // print final summary to brain
+    printToBrain(smallText, 7, "Tests passed: %d/%d", tests_passed,
+                 testOutputs.size());
+  }
   // return tests failed
   return tests_passed;
 }
 
-int testCustomClamp() {
+int testCustomClamp(int delay, bool printResults) {
   pros::screen::erase();
   printToBrain(smallText, 1, "Running custom_clamp test...");
-  pros::delay(1000);
+  pros::delay(delay);
   pros::screen::erase();
 
   // order for checks
@@ -541,24 +568,31 @@ int testCustomClamp() {
   std::array<double, 4> expectedReturns = {305, -200, 506, -215};
   double tests_passed = 0;
   for (int i = 0; i < expectedReturns.size(); i++) {
+
     double max_clamp = inputCases[i];
     double input = inputCases[i + 4];
     double min_clamp = inputCases[i + 8];
+
     testOutputs[i] = custom_clamp(input, min_clamp, max_clamp);
     if (std::fabs(testOutputs[i] - expectedReturns[i]) < 0.01) {
-      // print result to brain
-      printToBrain(smallText, i + 1, "Test %d passed.", i);
+      if (printResults) {
+        // print result to brain
+        printToBrain(smallText, i + 1, "Test %d passed.", i);
+      }
       // Add a value to the output, 1 for each pass
       tests_passed += 1;
-    } else {
+
+    } else if (printResults) {
       // print to brain details of failed test
       printToBrain(smallText, i + 2, "Test %d Failed. Expected: %.2f, got %.2f",
                    i, expectedReturns[i], testOutputs[i]);
     }
   }
-  // print final summary to brain
-  printToBrain(smallText, 7, "Tests passed: %d/%d", tests_passed,
-               testOutputs.size());
+  if (printResults) {
+    // print final summary to brain
+    printToBrain(smallText, 7, "Tests passed: %d/%d", tests_passed,
+                 testOutputs.size());
+  }
   return tests_passed;
 }
 
