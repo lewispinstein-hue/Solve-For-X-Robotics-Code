@@ -1,14 +1,19 @@
 #include "main.h"
 #include "lemlib/chassis/chassis.hpp"
+#include "pros/screen.h"
 #include <cstdlib>
 #include <string>
 
-//my helper files
-#include "users_class.h"
+// my helper files
+#include "users_class.cpp"
 
 // defines for controller buttons for readability
 #define CONTROLLER_UP pros::E_CONTROLLER_DIGITAL_UP
 #define CONTROLLER_DOWN pros::E_CONTROLLER_DIGITAL_DOWN
+
+// more reader friendly print command
+#define printToBrain pros::screen::print
+#define smallText pros::E_TEXT_SMALL
 
 // define joysticks
 #define CONTROLLER_LEFT_Y pros::E_CONTROLLER_ANALOG_LEFT_Y
@@ -28,8 +33,8 @@ pros::Controller main_controller(pros::E_CONTROLLER_MASTER);
 
 // pneumatics
 bool funnel_engaged = false;
-pros::adi::Pneumatics funnel_pneumatic_right('H', false);
-pros::adi::Pneumatics funnel_pneumatic_left('G', false);
+pros::adi::Pneumatics funnel_pneumatic_right('H', funnel_engaged);
+pros::adi::Pneumatics funnel_pneumatic_left('G', funnel_engaged);
 
 // intake and transit motors
 pros::Motor upper_transit_motor(7);
@@ -96,14 +101,16 @@ ball_conveyor_state current_ball_conveyor_state;
  * All other competition modes are blocked by initialize; it is recommended
  * to keep execution time for this mode under a few seconds.
  */
+
 void initialize() {
+  // calibrate lemlib stuff
   chassis.setPose(0, 0, 0);
   chassis.calibrate();
+  // set the stopping mode for the motors
   left_motors_drivetrain.set_brake_mode(pros::MotorBrake::brake);
   right_motors_drivetrain.set_brake_mode(pros::MotorBrake::brake);
 
   current_ball_conveyor_state = STOPPED; // initial state
-  funnel_engaged = false;
 }
 
 // visit users_class.h for User setup explanation
@@ -199,6 +206,7 @@ void checkControllerButtonPress() {
         (current_ball_conveyor_state == OUTTAKE) ? STOPPED : OUTTAKE;
   }
 
+  // testing buttons for lemlib
   else if (main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_A)) {
     chassis.setPose(0, 0, 0);
     chassis.cancelAllMotions();
@@ -210,6 +218,7 @@ void checkControllerButtonPress() {
   }
 }
 
+// clamp function to replace std::clamp
 double custom_clamp(double input, double MIN_VALUE, double MAX_VALUE) {
   if (input < MIN_VALUE)
     return MIN_VALUE;
@@ -218,6 +227,7 @@ double custom_clamp(double input, double MIN_VALUE, double MAX_VALUE) {
   return input;
 }
 
+// slew limit function
 double slewLimit(double target, double prev, double riseMaxDelta,
                  double fallMaxDelta) {
   double delta = target - prev;
@@ -254,6 +264,7 @@ double EXPONENT = 1.7;
 int track_user = 1;
 constexpr auto sizeOfUsers = 5;
 void setActiveUser() {
+  // check to see if we are trying to change the user
   if (main_controller.get_digital_new_press(CONTROLLER_UP) &&
       main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_L2) &&
       main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_LEFT)) {
@@ -267,7 +278,8 @@ void setActiveUser() {
     if (track_user < 0)
       track_user = sizeOfUsers; // wrap around
   }
-  // As we create users, put there adresses in this switch.
+  // uptade the user adress based on selected user
+  //  As we create users, put there adresses in this switch.
   switch (track_user) {
   case 1:
     Users::currentUser = &eli;
@@ -285,7 +297,7 @@ void setActiveUser() {
     Users::currentUser = &eli;
     break;
   }
-
+  // function for test user
   if (main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_L1) &&
       main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_L2) &&
       main_controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_RIGHT)) {
@@ -306,6 +318,7 @@ double expo_joystick(int input) {
   double normalized = (double)input / 127.0;       // normalize to [-1, 1]
   double curved = pow(fabs(normalized), EXPONENT); // apply exponential curve
   curved = curved * (normalized >= 0 ? 1 : -1);    // restore sign
+
   // if the output would be too large, dont change the number and pass it off to
   // the difference calculations
   if (curved >= 1 || curved <= -1) {
@@ -372,17 +385,16 @@ void printDebug(double LEFT_Y_AXIS, double RIGHT_X_AXIS, float left_motor_v,
   pros::screen::set_pen(pros::Color::white);
   // pros::screen::erase();
 
-  pros::screen::print(pros::E_TEXT_SMALL, 25, 20, "Intake Funnel: %s",
-                      funnel_engaged ? "true" : "false");
+  printToBrain(smallText, 25, 20, "Intake Funnel: %s",
+               funnel_engaged ? "true" : "false");
 
-  pros::screen::print(pros::E_TEXT_SMALL, 25, 40,
-                      "Left Y: %.1f | Right X: %.1f   ", LEFT_Y_AXIS,
-                      RIGHT_X_AXIS);
-  pros::screen::print(pros::E_TEXT_SMALL, 25, 60, "LV: %.1f | RV: %.1f   ",
-                      left_motor_v, right_motor_v);
+  printToBrain(smallText, 25, 40, "Left Y: %.1f | Right X: %.1f   ",
+               LEFT_Y_AXIS, RIGHT_X_AXIS);
+  printToBrain(smallText, 25, 60, "LV: %.1f | RV: %.1f   ", left_motor_v,
+               right_motor_v);
   // uptate user print
-  pros::screen::print(pros::E_TEXT_SMALL, 25, 80, "Current User: %s    ",
-                      Users::currentUser->getName().c_str());
+  printToBrain(smallText, 25, 80, "Current User: %s    ",
+               Users::currentUser->getName().c_str());
   // print pos
   lemlib::Pose pose = chassis.getPose();
 
@@ -397,11 +409,10 @@ void printDebug(double LEFT_Y_AXIS, double RIGHT_X_AXIS, float left_motor_v,
     correctedHeading += 360;
   }
 
-  pros::screen::print(pros::E_TEXT_SMALL, 25, 100,
-                      "Heading: %.2f | Corrected Heading: %.1f   ", pose.theta,
-                      correctedHeading);
-  pros::screen::print(pros::E_TEXT_SMALL, 25, 120,
-                      "X Relative: %.2f | Y Relative: %.2f   ", pose.x, pose.y);
+  printToBrain(smallText, 25, 100, "Heading: %.2f | Corrected Heading: %.1f   ",
+               pose.theta, correctedHeading);
+  printToBrain(smallText, 25, 120, "X Relative: %.2f | Y Relative: %.2f   ",
+               pose.x, pose.y);
 
   static lemlib::Pose prevPose = chassis.getPose();
   static uint32_t prevTime = pros::millis();
@@ -416,8 +427,8 @@ void printDebug(double LEFT_Y_AXIS, double RIGHT_X_AXIS, float left_motor_v,
   prevPose = currentPose;
   prevTime = currentTime;
 
-  pros::screen::print(pros::E_TEXT_SMALL, 25, 140, "X Vel: %.2f | ", vx);
-  pros::screen::print(pros::E_TEXT_SMALL, 140, 140, "Y Vel: %.2f", vy);
+  printToBrain(smallText, 25, 140, "X Vel: %.2f | ", vx);
+  printToBrain(smallText, 140, 140, "Y Vel: %.2f", vy);
   //--------------Prints for controller screen----------------------//
 
   char buffer[21]; // character limit of controller display
@@ -452,13 +463,20 @@ void autonomous() {}
  * task, not resume it from where it left off.
  */
 
+//  int testExpoJoystick() {
+//   double test1 = expo_joystick(1);
+//   double test2 = expo_joystick(127);
+//   if (test1 != 1) {
+
+//   }
+//  }
+
 void opcontrol() {
   while (true) {
     // make sure that the Users::currentUser contains a valid pointer
     if (Users::currentUser == nullptr) {
-      pros::screen::print(
-          pros::E_TEXT_SMALL, 100, 300,
-          "ERROR. NULLPTR ON POINTER 'Users::currentUser'. EXITING");
+      printToBrain(smallText, 100, 300,
+                   "ERROR. NULLPTR ON POINTER 'Users::currentUser'. EXITING");
       while (true) {
         pros::delay(100); // prevent resets, keep message on screen
       }

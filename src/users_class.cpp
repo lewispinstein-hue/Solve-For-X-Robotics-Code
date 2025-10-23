@@ -50,18 +50,18 @@ protected:
 
 public:
   /**
-   * @brief Constructs a new Users object with the specified settings.
+   * Constructs a new Users object with the specified settings.
    *
-   * @param name The driver's name.
-   * @param slew_max The maximum acceleration per cycle.
-   * @param slew_min The maximum deceleration per cycle.
-   * @param exponent The exponent for the joystick curve.
-   * @param scale_factor The scale factor for arcade drive.
-   * @param control The control type (Arcade or Tank).
-   * @param sf_high_goal Keybind for scoring a high goal.
-   * @param sf_medium_goal Keybind for scoring a medium goal.
-   * @param sf_low_goal Keybind for scoring a low goal.
-   * @param pn_button Keybind for the intake funnel toggle.
+   * \param name The driver's name.
+   * \param slew_max The maximum acceleration per cycle.
+   * \param slew_min The maximum deceleration per cycle.
+   * \param exponent The exponent for the joystick curve.
+   * \param scale_factor The scale factor for arcade drive.
+   * \param control The control type (Arcade or Tank).
+   * \param sf_high_goal Keybind for scoring a high goal.
+   * \param sf_medium_goal Keybind for scoring a medium goal.
+   * \param sf_low_goal Keybind for scoring a low goal.
+   * \param pn_button Keybind for the intake funnel toggle.
    */
 
   // constructor
