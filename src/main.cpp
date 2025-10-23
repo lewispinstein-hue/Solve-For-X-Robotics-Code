@@ -45,8 +45,9 @@ pros::Motor intake_transit_motor(-2);
 // Lemlib initialization
 constexpr float HALF_TRACK = 7.5f / 2.0f;
 
-pros::Imu inertial_sensor(16); // adjust port when we get sensor
+pros::Imu imu(16); // the slot for our imu
 
+// tracking wheels are the built in IME's in the motors
 lemlib::TrackingWheel
     leftVerticalTrackingWheel(&left_motors_drivetrain,
                               lemlib::Omniwheel::NEW_325,
@@ -59,6 +60,16 @@ lemlib::TrackingWheel
                                -HALF_TRACK, // flip sign if numbers are off
                                600);
 
+// sensor init with the sensors we created above
+lemlib::OdomSensors
+    odomSensors(&leftVerticalTrackingWheel,  // vertical1
+                &rightVerticalTrackingWheel, // vertical2
+                nullptr, // horizontal1 (no horizontal tracking wheel)
+                nullptr, // horizontal2
+                &imu     // IMU
+    );
+
+// settings lemlib uses (need to be tweaked)
 lemlib::ControllerSettings lateralSettings(12, 0, 2, // kP, kI, kD
                                            0,      // integral anti-windup range
                                            1, 100, // small error range, timeout
@@ -68,14 +79,7 @@ lemlib::ControllerSettings lateralSettings(12, 0, 2, // kP, kI, kD
 
 lemlib::ControllerSettings angularSettings(4, 0, 10, 0, 1, 0, 0, 0, 30);
 
-lemlib::OdomSensors
-    odomSensors(&leftVerticalTrackingWheel,  // vertical1
-                &rightVerticalTrackingWheel, // vertical2
-                nullptr,         // horizontal1 (no horizontal tracking wheel)
-                nullptr,         // horizontal2
-                &inertial_sensor // IMU
-    );
-
+// creating drivedrain object te be used in chassis
 lemlib::Drivetrain main_drivetrain(
     &left_motors_drivetrain,  // left motor group
     &right_motors_drivetrain, // right motor group
@@ -85,6 +89,7 @@ lemlib::Drivetrain main_drivetrain(
     2    // chase power (leave as 2 unless tuning)
 );
 
+// creating chassis for odometry and PID
 lemlib::Chassis chassis(main_drivetrain, lateralSettings, angularSettings,
                         odomSensors);
 
@@ -116,8 +121,8 @@ void handleTests() {
     pros::delay(1000);
 
   } else {
-    testExpoJoystick(1000, true);
-    pros::delay(1000);
+    testExpoJoystick(500, true);
+    pros::delay(800);
   }
 
   pros::delay(300);
@@ -138,10 +143,14 @@ void initialize() {
   // set the stopping mode for the motors
   left_motors_drivetrain.set_brake_mode(pros::MotorBrake::brake);
   right_motors_drivetrain.set_brake_mode(pros::MotorBrake::brake);
+  upper_transit_motor.set_brake_mode(
+      pros::MotorBrake::brake); // stop upper transit motor
+  intake_transit_motor.set_brake_mode(
+      pros::MotorBrake::brake); // stop intake transit motor
 
   current_ball_conveyor_state = STOPPED; // initial state
 
-  // verify tests
+  // handle tests
   handleTests();
 }
 
@@ -150,7 +159,7 @@ Users eli("Eli  ", 15, 30, 1.0, 1.6, Users::ControlType::Arcade,
           pros::E_CONTROLLER_DIGITAL_R2, pros::E_CONTROLLER_DIGITAL_R1,
           pros::E_CONTROLLER_DIGITAL_L2, pros::E_CONTROLLER_DIGITAL_B);
 
-Users lewis("Lewis", 15, 30, 2, 1.6, Users::ControlType::Arcade,
+Users lewis("Lewis", 15, 30, 1.7, 1.6, Users::ControlType::Arcade,
             pros::E_CONTROLLER_DIGITAL_R2, pros::E_CONTROLLER_DIGITAL_R1,
             pros::E_CONTROLLER_DIGITAL_L2, pros::E_CONTROLLER_DIGITAL_B);
 
@@ -165,6 +174,7 @@ Users sanjith("Sanjith", 20, 30, 3, 1.2, Users::ControlType::Arcade,
 Users TEST_USER("TEST_USER", 20, 30, 3, 1.2, Users::ControlType::Tank,
                 pros::E_CONTROLLER_DIGITAL_R1, pros::E_CONTROLLER_DIGITAL_R2,
                 pros::E_CONTROLLER_DIGITAL_L1, pros::E_CONTROLLER_DIGITAL_B);
+
 Users *Users::currentUser = &eli; // globally initialize current user as default
 
 /**
@@ -204,10 +214,6 @@ void updateBallConveyorMotors() {
     intake_transit_motor.move(-127); // spin intake transit motor
     break;
   case STOPPED:
-    upper_transit_motor.set_brake_mode(
-        pros::MotorBrake::brake); // stop upper transit motor
-    intake_transit_motor.set_brake_mode(
-        pros::MotorBrake::brake); // stop intake transit motor
     upper_transit_motor.move(0);
     intake_transit_motor.move(0);
     break;
@@ -344,6 +350,7 @@ void setActiveUser() {
   // we do not need to update certain members like the keybinds and the drive
   // types because there is nothing to update them to
 }
+
 double expo_joystick(int input, double EXPONENT) {
   // function to apply an exponential curve to the input.
   // is is applyed to the fowards and turn values in opcontrol()
@@ -398,6 +405,9 @@ void handleArcadeControl(double &left_motor_voltage,
   }
 }
 
+//forward declaration 
+void handleSlewControl(double &left_motor_voltage, double &right_motor_volatge);
+
 void handleDriving(int LEFT_Y_AXIS, int RIGHT_X_AXIS, int RIGHT_Y_AXIS,
                    double &left_motor_voltage, double &right_motor_voltage) {
 
@@ -409,6 +419,29 @@ void handleDriving(int LEFT_Y_AXIS, int RIGHT_X_AXIS, int RIGHT_Y_AXIS,
     left_motor_voltage = expo_joystick(LEFT_Y_AXIS, EXPONENT);
     right_motor_voltage = expo_joystick(RIGHT_Y_AXIS, EXPONENT);
   }
+  handleSlewControl(left_motor_voltage, right_motor_voltage);
+}
+
+void handleSlewControl(double &left_motor_voltage, double& right_motor_voltage) {
+   // comparing cases for slew
+    static double prev_left_voltage = 0;
+    static double prev_right_voltage = 0;
+
+    // slew control
+    left_motor_voltage =
+        slewLimit(left_motor_voltage, prev_left_voltage, MAX_DELTA, MIN_DELTA);
+    right_motor_voltage = slewLimit(right_motor_voltage, prev_right_voltage,
+                                    MAX_DELTA, MIN_DELTA);
+
+    // update slew limiters
+    prev_left_voltage = left_motor_voltage;
+    prev_right_voltage = right_motor_voltage;
+
+    // double check to make sure we are in range
+    left_motor_voltage = custom_clamp(left_motor_voltage, -127, 127);
+    right_motor_voltage = custom_clamp(right_motor_voltage, -127, 127);
+
+
 }
 
 void printDebug(double LEFT_Y_AXIS, double RIGHT_X_AXIS, float left_motor_v,
@@ -600,7 +633,7 @@ void opcontrol() {
   while (true) {
     // make sure that the Users::currentUser contains a valid pointer
     if (Users::currentUser == nullptr) {
-      printToBrain(smallText, 100, 300,
+      printToBrain(smallText, 5,
                    "ERROR. NULLPTR ON POINTER 'Users::currentUser'. STOPPING");
       while (true) {
         pros::delay(100); // prevent resets, keep message on screen
@@ -629,23 +662,6 @@ void opcontrol() {
     handleDriving(LEFT_Y_AXIS, RIGHT_X_AXIS, RIGHT_Y_AXIS, left_motor_voltage,
                   right_motor_voltage);
 
-    // comparing cases for slew
-    static double prev_left_voltage = 0;
-    static double prev_right_voltage = 0;
-
-    // slew control
-    left_motor_voltage =
-        slewLimit(left_motor_voltage, prev_left_voltage, MAX_DELTA, MIN_DELTA);
-    right_motor_voltage = slewLimit(right_motor_voltage, prev_right_voltage,
-                                    MAX_DELTA, MIN_DELTA);
-
-    // update slew limiters
-    prev_left_voltage = left_motor_voltage;
-    prev_right_voltage = right_motor_voltage;
-
-    // double check to make sure we are in range
-    left_motor_voltage = custom_clamp(left_motor_voltage, -127, 127);
-    right_motor_voltage = custom_clamp(right_motor_voltage, -127, 127);
 
     left_motors_drivetrain.move(left_motor_voltage);
     right_motors_drivetrain.move(right_motor_voltage);
