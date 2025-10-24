@@ -2,9 +2,11 @@
 #include "lemlib/chassis/chassis.hpp"
 
 // my helper files
+#include "pros/misc.hpp"
 #include "pros/screen.hpp"
 #include "test_class.h"
 #include "users_class.h"
+#include <cstdio>
 
 // defines for controller buttons for readability
 #define CONTROLLER_UP pros::E_CONTROLLER_DIGITAL_UP
@@ -110,7 +112,7 @@ double handleArcadeControl(double &left, double &right);
  * to keep execution time for this mode under a few seconds.
  */
 
- void clearScreen() {
+void clearScreen() {
   // just trying everything to clear the screen.
   pros::screen::erase_rect(0, 0, 480, 272);
   pros::screen::erase();
@@ -199,7 +201,7 @@ Users ian("Ian", 20, 30, 2.1, 1.5, Users::ControlType::Arcade,
           pros::E_CONTROLLER_DIGITAL_R2, pros::E_CONTROLLER_DIGITAL_R1,
           pros::E_CONTROLLER_DIGITAL_L2, pros::E_CONTROLLER_DIGITAL_A);
 
-Users sanjith("Sanjith", 10, 25, 6.7, 1.2, Users::ControlType::Arcade,
+Users sanjith("Sanjith", 10, 25, 6.7, 6.7, Users::ControlType::Arcade,
               pros::E_CONTROLLER_DIGITAL_R1, pros::E_CONTROLLER_DIGITAL_R2,
               pros::E_CONTROLLER_DIGITAL_L1, pros::E_CONTROLLER_DIGITAL_B);
 
@@ -328,7 +330,7 @@ double scale_factor = 2;
 double EXPONENT = 1.7;
 
 int track_user = 1;
-constexpr auto sizeOfUsers = 5;
+constexpr auto sizeOfUsers = 4;
 void setActiveUser() {
   // check to see if we are trying to change the user
   if (main_controller.get_digital_new_press(CONTROLLER_UP) &&
@@ -434,10 +436,12 @@ void handleSlewControl(double &left_motor_voltage, double &right_motor_volatge);
 void handleDriving(int LEFT_Y_AXIS, int RIGHT_X_AXIS, int RIGHT_Y_AXIS,
                    double &left_motor_voltage, double &right_motor_voltage) {
 
+  // check which driver type the current user has
   if (Users::currentUser->getControlType() == Users::ControlType::Arcade) {
     handleArcadeControl(
         left_motor_voltage,
         right_motor_voltage); // Handle drive control and motor calc
+
   } else if (Users::currentUser->getControlType() == Users::ControlType::Tank) {
     left_motor_voltage = expo_joystick(LEFT_Y_AXIS, EXPONENT);
     right_motor_voltage = expo_joystick(RIGHT_Y_AXIS, EXPONENT);
@@ -468,26 +472,25 @@ void handleSlewControl(double &left_motor_voltage,
 
 void printDebug(double LEFT_Y_AXIS, double RIGHT_X_AXIS, float left_motor_v,
                 float right_motor_v) {
-
+  // set pen color and clear screen
   pros::screen::set_pen(pros::Color::white);
-  // clearScreen();
+  clearScreen();
 
   printToBrain(smallText, 25, 20, "Intake Funnel: %s",
                funnel_engaged ? "true" : "false");
 
-  printToBrain(smallText, 25, 40, "Left Y: %.1f | Right X: %.1f   ",
-               LEFT_Y_AXIS, RIGHT_X_AXIS);
-  printToBrain(smallText, 25, 60, "LV: %.1f | RV: %.1f   ", left_motor_v,
+  printToBrain(smallText, 25, 40, "Left Y: %.1f | Right X: %.1f", LEFT_Y_AXIS,
+               RIGHT_X_AXIS);
+  printToBrain(smallText, 25, 60, "LV: %.1f | RV: %.1f", left_motor_v,
                right_motor_v);
   // uptate user print
-  printToBrain(smallText, 25, 80, "Current User: %s    ",
+  printToBrain(smallText, 25, 80, "Current User: %s",
                Users::currentUser->getName().c_str());
   // print pos
   lemlib::Pose pose = chassis.getPose();
 
   // code to normalize the heading to 180 to -180 instead of the default total
-  // degres value that getPos() returns
-
+  // degres value that getPose() returns
   double correctedHeading = pose.theta;
   correctedHeading = fmod(correctedHeading, 360.0);
   if (correctedHeading > 180) {
@@ -495,25 +498,25 @@ void printDebug(double LEFT_Y_AXIS, double RIGHT_X_AXIS, float left_motor_v,
   } else if (correctedHeading < -180) {
     correctedHeading += 360;
   }
-
+  // print pose from lemlib
   printToBrain(smallText, 25, 100, "Heading: %.2f | Corrected Heading: %.1f   ",
                pose.theta, correctedHeading);
   printToBrain(smallText, 25, 120, "X Relative: %.2f | Y Relative: %.2f   ",
                pose.x, pose.y);
-
+  // create variables for comparison
   static lemlib::Pose prevPose = chassis.getPose();
   static uint32_t prevTime = pros::millis();
 
   uint32_t currentTime = pros::millis();
-  lemlib::Pose currentPose = chassis.getPose();
-
+  // make velocity calculation
   double dt = (currentTime - prevTime) / 1000.0;
-  double vx = (dt > 0) ? (currentPose.x - prevPose.x) / dt : 0;
-  double vy = (dt > 0) ? (currentPose.y - prevPose.y) / dt : 0;
+  double vx = (dt > 0) ? (pose.x - prevPose.x) / dt : 0;
+  double vy = (dt > 0) ? (pose.y - prevPose.y) / dt : 0;
 
-  prevPose = currentPose;
+  // update timers
+  prevPose = pose;
   prevTime = currentTime;
-
+  // print results
   printToBrain(smallText, 25, 140, "X Vel: %.2f | ", vx);
   printToBrain(smallText, 140, 140, "Y Vel: %.2f", vy);
   //--------------Prints for controller screen----------------------//
@@ -534,7 +537,36 @@ void printDebug(double LEFT_Y_AXIS, double RIGHT_X_AXIS, float left_motor_v,
  * will be stopped. Re-enabling the robot will restart the task, not re-start
  * it from where it left off.
  */
-void autonomous() {}
+
+void autonomous() {
+  bool runAuton = true;
+  uint32_t prevTime = 0; // Initialize prevTime outside the loop
+
+  while (runAuton) {
+    chassis.moveToPoint(5, 10, 5000);
+
+    // Only start the reversal logic after the first movement is complete.
+    if (prevTime == 0) {
+      prevTime = pros::millis(); // Set prevTime the first time we enter this part
+    }
+
+    // Check if 1 second has passed since we started moving backwards.
+    // pros::millis() returns the time since the program started.
+    if (pros::millis() - prevTime < 1000) {
+      // spin motors backwards while the 1s timer is true
+      left_motors_drivetrain.move(-100);
+      right_motors_drivetrain.move(-100);
+    } else {
+      // 1 second has passed, so we can now reset the chassis position and stop the backwards movement.
+      left_motors_drivetrain.move(0);
+      right_motors_drivetrain.move(0);
+      chassis.setPose(5, 8, 0);
+
+      // This is a simple autonomous routine, so we can stop after this.
+      runAuton = false;
+    }
+  }
+}
 
 /**
  * Runs the operator control code. This function will be started in its own
@@ -549,54 +581,6 @@ void autonomous() {}
  * operator control task will be stopped. Re-enabling the robot will restart
  * the task, not resume it from where it left off.
  */
-
-int testCustomClamp(int delay, bool printResults) {
-  clearScreen();
-  printToBrain(smallText, 1, "Running custom_clamp test...");
-  pros::delay(delay);
-  clearScreen();
-
-  // order for checks
-  //  pass through, cap max, cap min, negative cap min
-  std::array<double, 12> inputCases = {// max clamp
-                                       400, -200, 609, -102,
-                                       // input
-                                       305, -102, 491, -230,
-                                       // min clamp
-                                       200, -400, 506, -215};
-  // what the function returns
-  std::array<double, 4> testOutputs;
-  // expected returns
-  std::array<double, 4> expectedReturns = {305, -200, 506, -215};
-  double tests_passed = 0;
-  for (int i = 0; i < expectedReturns.size(); i++) {
-
-    double max_clamp = inputCases[i];
-    double input = inputCases[i + 4];
-    double min_clamp = inputCases[i + 8];
-
-    testOutputs[i] = custom_clamp(input, min_clamp, max_clamp);
-    if (std::fabs(testOutputs[i] - expectedReturns[i]) < 0.01) {
-      if (printResults) {
-        // print result to brain
-        printToBrain(smallText, i + 1, "Test %d passed.", i);
-      }
-      // Add a value to the output, 1 for each pass
-      tests_passed += 1;
-
-    } else if (printResults) {
-      // print to brain details of failed test
-      printToBrain(smallText, i + 2, "Test %d Failed. Expected: %.2f, got %.2f",
-                   i, expectedReturns[i], testOutputs[i]);
-    }
-  }
-  if (printResults) {
-    // print final summary to brain
-    printToBrain(smallText, 7, "Tests passed: %d/%d", tests_passed,
-                 testOutputs.size());
-  }
-  return tests_passed;
-}
 
 void opcontrol() {
   while (true) {
