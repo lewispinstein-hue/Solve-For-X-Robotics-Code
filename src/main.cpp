@@ -1,5 +1,6 @@
 #include "main.h"
 #include "lemlib/chassis/chassis.hpp"
+#include <string.h> // For strcmp()
 
 // my helper files
 #include "pros/misc.hpp"
@@ -474,7 +475,7 @@ void printDebug(double LEFT_Y_AXIS, double RIGHT_X_AXIS, float left_motor_v,
                 float right_motor_v) {
   // set pen color and clear screen
   pros::screen::set_pen(pros::Color::white);
-  clearScreen();
+  // clearScreen();
 
   printToBrain(smallText, 25, 20, "Intake Funnel: %s",
                funnel_engaged ? "true" : "false");
@@ -522,8 +523,17 @@ void printDebug(double LEFT_Y_AXIS, double RIGHT_X_AXIS, float left_motor_v,
   //--------------Prints for controller screen----------------------//
 
   char buffer[21]; // character limit of controller display
+  char prevBuffer[21] = "";
   sprintf(buffer, "H: %.1f|X: %.1f|Y: %.1f", correctedHeading, pose.x, pose.y);
-  main_controller.print(0, 0, buffer);
+  strcpy(prevBuffer, "");
+  printf("%s", buffer); // trying to print to console
+  if (strcmp(buffer, prevBuffer) == 0) {
+
+  } else {
+    // Buffers are different. Copy the new buffer over for the next comparison.
+    strcpy(prevBuffer, buffer);
+    main_controller.print(0, 0, buffer);
+  }
 }
 
 /**
@@ -547,7 +557,8 @@ void autonomous() {
 
     // Only start the reversal logic after the first movement is complete.
     if (prevTime == 0) {
-      prevTime = pros::millis(); // Set prevTime the first time we enter this part
+      prevTime =
+          pros::millis(); // Set prevTime the first time we enter this part
     }
 
     // Check if 1 second has passed since we started moving backwards.
@@ -557,7 +568,8 @@ void autonomous() {
       left_motors_drivetrain.move(-100);
       right_motors_drivetrain.move(-100);
     } else {
-      // 1 second has passed, so we can now reset the chassis position and stop the backwards movement.
+      // 1 second has passed, so we can now reset the chassis position and stop
+      // the backwards movement.
       left_motors_drivetrain.move(0);
       right_motors_drivetrain.move(0);
       chassis.setPose(5, 8, 0);
