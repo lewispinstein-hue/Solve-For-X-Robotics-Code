@@ -1,15 +1,11 @@
 #include "main.h"
 #include "lemlib/chassis/chassis.hpp"
-#include "pros/screen.h"
-#include <array>
-#include <cstdint>
-#include <cstdlib>
-#include <string>
 
 // my helper files
 #include "pros/screen.hpp"
 #include "test_class.h"
 #include "users_class.h"
+
 // defines for controller buttons for readability
 #define CONTROLLER_UP pros::E_CONTROLLER_DIGITAL_UP
 #define CONTROLLER_DOWN pros::E_CONTROLLER_DIGITAL_DOWN
@@ -106,6 +102,7 @@ ball_conveyor_state current_ball_conveyor_state;
 // foward declaration for tests
 double expo_joystick(double input, double EXPONENT);
 double custom_clamp(double, double, double);
+double handleArcadeControl(double &left, double &right);
 /**
  * Runs initialization code. This occurs as soon as the program is started.
  *
@@ -113,14 +110,21 @@ double custom_clamp(double, double, double);
  * to keep execution time for this mode under a few seconds.
  */
 
+ void clearScreen() {
+  // just trying everything to clear the screen.
+  clearScreen();
+  pros::screen::erase();
+  pros::screen::fill_rect(0, 0, 480, 272);
+}
+
 void handleTests() {
-  //for floating point inacuracies 
+  // for floating point inacuracies
   constexpr double TOLERANCE = 0.05;
-  //tracks the return value of runTestsArgs()
+  // tracks the return value of runTestsArgs()
   int tests_passed;
   // Initialize Test objects
 
-  //test for expo_joystick
+  // test for expo_joystick
   Test testExpoJoystick({1, 64, 63, 127}, {1, 1.2, 3.1, 2}, {},
                         {1.0, 55.8, 14.5, 127.0}, expo_joystick, TOLERANCE);
   tests_passed += testExpoJoystick.runTestsArgs2(1000, true);
@@ -129,10 +133,18 @@ void handleTests() {
                        {400, -200, 609, -102}, {305, -200, 506, -215},
                        custom_clamp, TOLERANCE);
   tests_passed += customClampTest.runTestsArgs3(1000, true);
+  std::vector<double> leftYArcade = {127, -127, 127, 0, 0, 20, 50, 35};
+  std::vector<double> rightXArcade = {0, 0, 127, 127, -127, 0, 50, 80};
+  std::vector<double> expectedOutArcade = {254, -254, 191, 0, 0, 20, 100, 65};
+
+  Test testArcadeControl(leftYArcade, rightXArcade, {}, expectedOutArcade,
+                         handleArcadeControl, TOLERANCE);
+  tests_passed += testArcadeControl.runTestsArgs2(1000, true);
 
   // print summary
+  clearScreen(); // clear screen
   printToBrain(smallText, 25, 100, "Summary: ");
-  printToBrain(smallText, 25, 120, "Tests run: 2");
+  printToBrain(smallText, 25, 120, "Tests run: 3");
   printToBrain(smallText, 25, 140, "Tests passed: %d", tests_passed);
   printToBrain(smallText, 25, 160, "Would you like to run tests again?");
 
@@ -140,7 +152,7 @@ void handleTests() {
 
   while (testAgain) {
     if (main_controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_A)) {
-      pros::screen::erase();
+      clearScreen();
       printToBrain(smallText, 25, 100, "Running Tests again...");
       pros::delay(300);
       testExpoJoystick.runTestsArgs2(3000, true);
@@ -148,7 +160,7 @@ void handleTests() {
       testAgain = false;
     } else if (main_controller.get_digital_new_press(
                    pros::E_CONTROLLER_DIGITAL_X)) {
-      pros::screen::erase();
+      clearScreen();
       printToBrain(smallText, 25, 100, "Continuing program...");
       testAgain = false;
       return;
@@ -187,7 +199,7 @@ Users ian("Ian", 20, 30, 2.1, 1.5, Users::ControlType::Arcade,
           pros::E_CONTROLLER_DIGITAL_R2, pros::E_CONTROLLER_DIGITAL_R1,
           pros::E_CONTROLLER_DIGITAL_L2, pros::E_CONTROLLER_DIGITAL_A);
 
-Users sanjith("Sanjith", 20, 30, 6.7, 1.2, Users::ControlType::Arcade,
+Users sanjith("Sanjith", 10, 25, 6.7, 1.2, Users::ControlType::Arcade,
               pros::E_CONTROLLER_DIGITAL_R1, pros::E_CONTROLLER_DIGITAL_R2,
               pros::E_CONTROLLER_DIGITAL_L1, pros::E_CONTROLLER_DIGITAL_B);
 
@@ -212,7 +224,7 @@ void disabled() {
  * This task will exit when the robot is enabled and autonomous or opcontrol
  * starts.
  */
-void competition_initialize() {};
+void competition_initialize(){};
 
 // function to update conveyor motors based on enum states
 void updateBallConveyorMotors() {
@@ -376,8 +388,8 @@ double expo_joystick(double input, double EXPONENT) {
   return curved * 127.0; // scale back to motor range
 }
 
-void handleArcadeControl(double &left_motor_voltage,
-                         double &right_motor_voltage) {
+double handleArcadeControl(double &left_motor_voltage,
+                           double &right_motor_voltage) {
   // if the turn value is not large unough, disregard and just use
   // Arcade control scheme
   // forward/backward on left stick Y
@@ -413,6 +425,7 @@ void handleArcadeControl(double &left_motor_voltage,
     right_motor_voltage = -MOTOR_MAX;
     left_motor_voltage += difference;
   }
+  return left_motor_voltage + right_motor_voltage;
 }
 
 // forward declaration
@@ -457,7 +470,7 @@ void printDebug(double LEFT_Y_AXIS, double RIGHT_X_AXIS, float left_motor_v,
                 float right_motor_v) {
 
   pros::screen::set_pen(pros::Color::white);
-  // pros::screen::erase();
+  // clearScreen();
 
   printToBrain(smallText, 25, 20, "Intake Funnel: %s",
                funnel_engaged ? "true" : "false");
@@ -538,10 +551,10 @@ void autonomous() {}
  */
 
 int testCustomClamp(int delay, bool printResults) {
-  pros::screen::erase();
+  clearScreen();
   printToBrain(smallText, 1, "Running custom_clamp test...");
   pros::delay(delay);
-  pros::screen::erase();
+  clearScreen();
 
   // order for checks
   //  pass through, cap max, cap min, negative cap min
