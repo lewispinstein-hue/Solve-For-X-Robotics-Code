@@ -114,9 +114,13 @@ double custom_clamp(double, double, double);
  */
 
 void handleTests() {
+  //for floating point inacuracies 
   constexpr double TOLERANCE = 0.05;
+  //tracks the return value of runTestsArgs()
   int tests_passed;
-  // Initialize Test object
+  // Initialize Test objects
+
+  //test for expo_joystick
   Test testExpoJoystick({1, 64, 63, 127}, {1, 1.2, 3.1, 2}, {},
                         {1.0, 55.8, 14.5, 127.0}, expo_joystick, TOLERANCE);
   tests_passed += testExpoJoystick.runTestsArgs2(1000, true);
@@ -175,21 +179,17 @@ Users eli("Eli   ", 15, 30, 1.0, 1.6, Users::ControlType::Arcade,
           pros::E_CONTROLLER_DIGITAL_R2, pros::E_CONTROLLER_DIGITAL_R1,
           pros::E_CONTROLLER_DIGITAL_L2, pros::E_CONTROLLER_DIGITAL_B);
 
-Users lewis("Lewis", 15, 30, 1.7, 1.6, Users::ControlType::Arcade,
+Users lewis("Lewis", 15, 40, 1.7, 1.4, Users::ControlType::Arcade,
             pros::E_CONTROLLER_DIGITAL_R2, pros::E_CONTROLLER_DIGITAL_R1,
-            pros::E_CONTROLLER_DIGITAL_L2, pros::E_CONTROLLER_DIGITAL_B);
+            pros::E_CONTROLLER_DIGITAL_UP, pros::E_CONTROLLER_DIGITAL_B);
 
 Users ian("Ian", 20, 30, 2.1, 1.5, Users::ControlType::Arcade,
           pros::E_CONTROLLER_DIGITAL_R2, pros::E_CONTROLLER_DIGITAL_R1,
           pros::E_CONTROLLER_DIGITAL_L2, pros::E_CONTROLLER_DIGITAL_A);
 
-Users sanjith("Sanjith", 20, 30, 3, 1.2, Users::ControlType::Arcade,
+Users sanjith("Sanjith", 20, 30, 6.7, 1.2, Users::ControlType::Arcade,
               pros::E_CONTROLLER_DIGITAL_R1, pros::E_CONTROLLER_DIGITAL_R2,
               pros::E_CONTROLLER_DIGITAL_L1, pros::E_CONTROLLER_DIGITAL_B);
-
-Users TEST_USER("TEST_USER", 20, 30, 3, 1.2, Users::ControlType::Tank,
-                pros::E_CONTROLLER_DIGITAL_R1, pros::E_CONTROLLER_DIGITAL_R2,
-                pros::E_CONTROLLER_DIGITAL_L1, pros::E_CONTROLLER_DIGITAL_B);
 
 Users *Users::currentUser = &eli; // globally initialize current user as default
 
@@ -212,7 +212,7 @@ void disabled() {
  * This task will exit when the robot is enabled and autonomous or opcontrol
  * starts.
  */
-void competition_initialize() {}
+void competition_initialize() {};
 
 // function to update conveyor motors based on enum states
 void updateBallConveyorMotors() {
@@ -350,12 +350,6 @@ void setActiveUser() {
   default:
     Users::currentUser = &eli;
     break;
-  }
-  // function for test user
-  if (main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_L1) &&
-      main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_L2) &&
-      main_controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_RIGHT)) {
-    Users::currentUser = &TEST_USER;
   }
 
   // update variables
