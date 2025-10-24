@@ -112,7 +112,7 @@ double handleArcadeControl(double &left, double &right);
 
  void clearScreen() {
   // just trying everything to clear the screen.
-  clearScreen();
+  pros::screen::erase_rect(0, 0, 480, 272);
   pros::screen::erase();
   pros::screen::fill_rect(0, 0, 480, 272);
 }
