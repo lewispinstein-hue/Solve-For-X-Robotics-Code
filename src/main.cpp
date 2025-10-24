@@ -146,7 +146,7 @@ void handleTests() {
   clearScreen(); // clear screen
   printToBrain(smallText, 25, 0.0, "Summary: ");
   printToBrain(smallText, 25, 20, "Tests run: 3");
-  printToBrain(smallText, 25, 40, "Tests passed: %d", tests_passed);
+  printToBrain(smallText, 25, 40, "Tests passed: %d/16", tests_passed);
   printToBrain(smallText, 25, 60,
                "Would you like to run tests again? (A = y/X = n)");
 
@@ -202,7 +202,11 @@ Users sanjith("Sanjith", 10, 25, 6.7, 6.7, Users::ControlType::Arcade,
               pros::E_CONTROLLER_DIGITAL_R1, pros::E_CONTROLLER_DIGITAL_R2,
               pros::E_CONTROLLER_DIGITAL_L1, pros::E_CONTROLLER_DIGITAL_B);
 
-Users *Users::currentUser = &eli; // globally initialize current user as default
+Users john("John", 12, 12, 1.67, 1.41, Users::ControlType::Tank,
+           pros::E_CONTROLLER_DIGITAL_UP, pros::E_CONTROLLER_DIGITAL_DOWN,
+           pros::E_CONTROLLER_DIGITAL_A, pros::E_CONTROLLER_DIGITAL_R2);
+
+Users *Users::currentUser = &john; // globally initialize current user as default
 
 /**
  * Runs while the robot is in the disabled state of Field Management System or
@@ -536,11 +540,11 @@ void printDebug(double LEFT_Y_AXIS, double RIGHT_X_AXIS, float left_motor_v,
  */
 
 void autonomous() {
-  bool runAuton = true;
   uint32_t prevTime = 0; // Initialize prevTime outside the loop
 
-  while (runAuton) {
-    chassis.moveToPoint(5, 10, 5000);
+  while (true) {
+    checkControllerButtonPress();
+    chassis.moveToPoint(0, 10, 5000);
 
     // Only start the reversal logic after the first movement is complete.
     if (prevTime == 0) {
@@ -559,10 +563,10 @@ void autonomous() {
       // the backwards movement.
       left_motors_drivetrain.move(0);
       right_motors_drivetrain.move(0);
-      chassis.setPose(5, 8, 0);
+      chassis.setPose(0, 8, 0);
 
       // This is a simple autonomous routine, so we can stop after this.
-      runAuton = false;
+      break;
     }
   }
 }
@@ -582,6 +586,7 @@ void autonomous() {
  */
 
 void opcontrol() {
+  autonomous();
   while (true) {
     // make sure that the Users::currentUser contains a valid pointer
     if (Users::currentUser == nullptr) {
