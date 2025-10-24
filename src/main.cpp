@@ -1,13 +1,11 @@
 #include "main.h"
 #include "lemlib/chassis/chassis.hpp"
-#include <string.h> // For strcmp()
-
-// my helper files
 #include "pros/misc.hpp"
 #include "pros/screen.hpp"
+
+// my helper files
 #include "test_class.h"
 #include "users_class.h"
-#include <cstdio>
 
 // defines for controller buttons for readability
 #define CONTROLLER_UP pros::E_CONTROLLER_DIGITAL_UP
@@ -48,17 +46,13 @@ constexpr float HALF_TRACK = 7.5f / 2.0f;
 pros::Imu imu(16); // the slot for our imu
 
 // tracking wheels are the built in IME's in the motors
-lemlib::TrackingWheel
-    leftVerticalTrackingWheel(&left_motors_drivetrain,
-                              lemlib::Omniwheel::NEW_325,
-                              HALF_TRACK, // flip sign if numbers are off
-                              600);
+lemlib::TrackingWheel leftVerticalTrackingWheel(&left_motors_drivetrain,
+                                                lemlib::Omniwheel::NEW_325,
+                                                HALF_TRACK, 600);
 
-lemlib::TrackingWheel
-    rightVerticalTrackingWheel(&right_motors_drivetrain,
-                               lemlib::Omniwheel::NEW_325,
-                               -HALF_TRACK, // flip sign if numbers are off
-                               600);
+lemlib::TrackingWheel rightVerticalTrackingWheel(&right_motors_drivetrain,
+                                                 lemlib::Omniwheel::NEW_325,
+                                                 -HALF_TRACK, 600);
 
 // sensor init with the sensors we created above
 lemlib::OdomSensors
@@ -103,9 +97,9 @@ enum ball_conveyor_state {
 ball_conveyor_state current_ball_conveyor_state;
 
 // foward declaration for tests
-double expo_joystick(double input, double EXPONENT);
+double expo_joystick(double, double);
 double custom_clamp(double, double, double);
-double handleArcadeControl(double &left, double &right);
+double handleArcadeControl(double &, double &, double);
 /**
  * Runs initialization code. This occurs as soon as the program is started.
  *
@@ -116,8 +110,8 @@ double handleArcadeControl(double &left, double &right);
 void clearScreen() {
   // just trying everything to clear the screen.
   pros::screen::erase_rect(0, 0, 480, 272);
-  pros::screen::erase();
   pros::screen::fill_rect(0, 0, 480, 272);
+  pros::screen::erase();
 }
 
 void handleTests() {
@@ -129,43 +123,46 @@ void handleTests() {
 
   // test for expo_joystick
   Test testExpoJoystick({1, 64, 63, 127}, {1, 1.2, 3.1, 2}, {},
-                        {1.0, 55.8, 14.5, 127.0}, expo_joystick, TOLERANCE);
-  tests_passed += testExpoJoystick.runTestsArgs2(1000, true);
+                        {1.0, 55.8, 14.5, 127.0}, "Expo Joystck", expo_joystick,
+                        TOLERANCE);
+  tests_passed += testExpoJoystick.runTestsArgs2(500, true);
   // tesing custom clamp
   Test customClampTest({305, -102, 491, -230}, {200, -400, 506, -215},
                        {400, -200, 609, -102}, {305, -200, 506, -215},
-                       custom_clamp, TOLERANCE);
-  tests_passed += customClampTest.runTestsArgs3(1000, true);
+                       "Custom Clamp", custom_clamp, TOLERANCE);
+  tests_passed += customClampTest.runTestsArgs3(500, true);
+
   std::vector<double> leftYArcade = {127, -127, 127, 0, 0, 20, 50, 35};
   std::vector<double> rightXArcade = {0, 0, 127, 127, -127, 0, 50, 80};
+  std::vector<double> testingScaleFactor = {2, 2, 2, 2, 2, 2, 2, 2};
   std::vector<double> expectedOutArcade = {254, -254, 191, 0, 0, 20, 100, 65};
 
-  Test testArcadeControl(leftYArcade, rightXArcade, {}, expectedOutArcade,
+  Test testArcadeControl(leftYArcade, rightXArcade, testingScaleFactor,
+                         expectedOutArcade, "Arcade Control",
                          handleArcadeControl, TOLERANCE);
-  tests_passed += testArcadeControl.runTestsArgs2(1000, true);
+  tests_passed += testArcadeControl.runTestsArgs3(500, true);
 
   // print summary
   clearScreen(); // clear screen
-  printToBrain(smallText, 25, 100, "Summary: ");
-  printToBrain(smallText, 25, 120, "Tests run: 3");
-  printToBrain(smallText, 25, 140, "Tests passed: %d", tests_passed);
-  printToBrain(smallText, 25, 160, "Would you like to run tests again?");
+  printToBrain(smallText, 25, 0.0, "Summary: ");
+  printToBrain(smallText, 25, 20, "Tests run: 3");
+  printToBrain(smallText, 25, 40, "Tests passed: %d", tests_passed);
+  printToBrain(smallText, 25, 60,
+               "Would you like to run tests again? (A = y/X = n)");
 
-  bool testAgain = true;
-
-  while (testAgain) {
+  while (true) {
     if (main_controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_A)) {
       clearScreen();
-      printToBrain(smallText, 25, 100, "Running Tests again...");
+      printToBrain(smallText, 25, 40, "Running Tests again...");
       pros::delay(300);
       testExpoJoystick.runTestsArgs2(3000, true);
       customClampTest.runTestsArgs3(3000, true);
-      testAgain = false;
+      testArcadeControl.runTestsArgs3(3000, true);
+      return;
     } else if (main_controller.get_digital_new_press(
                    pros::E_CONTROLLER_DIGITAL_X)) {
       clearScreen();
-      printToBrain(smallText, 25, 100, "Continuing program...");
-      testAgain = false;
+      printToBrain(smallText, 25, 40, "Continuing program...");
       return;
     }
   }
@@ -178,23 +175,22 @@ void initialize() {
   // set the stopping mode for the motors
   left_motors_drivetrain.set_brake_mode(pros::MotorBrake::brake);
   right_motors_drivetrain.set_brake_mode(pros::MotorBrake::brake);
-  upper_transit_motor.set_brake_mode(
-      pros::MotorBrake::brake); // stop upper transit motor
-  intake_transit_motor.set_brake_mode(
-      pros::MotorBrake::brake); // stop intake transit motor
+  upper_transit_motor.set_brake_mode(pros::MotorBrake::brake);
+  intake_transit_motor.set_brake_mode(pros::MotorBrake::brake);
 
   current_ball_conveyor_state = STOPPED; // initial state
 
   // handle tests
   handleTests();
+  clearScreen();
 }
 
 // visit users_class.h for User setup explanation
-Users eli("Eli   ", 15, 30, 1.0, 1.6, Users::ControlType::Arcade,
+Users eli("Eli   ", 15, 30, 1.6, 1.6, Users::ControlType::Arcade,
           pros::E_CONTROLLER_DIGITAL_R2, pros::E_CONTROLLER_DIGITAL_R1,
           pros::E_CONTROLLER_DIGITAL_L2, pros::E_CONTROLLER_DIGITAL_B);
 
-Users lewis("Lewis", 15, 40, 1.7, 1.4, Users::ControlType::Arcade,
+Users lewis("Lewis", 30, 40, 1.3, 1.4, Users::ControlType::Arcade,
             pros::E_CONTROLLER_DIGITAL_R2, pros::E_CONTROLLER_DIGITAL_R1,
             pros::E_CONTROLLER_DIGITAL_UP, pros::E_CONTROLLER_DIGITAL_B);
 
@@ -392,7 +388,7 @@ double expo_joystick(double input, double EXPONENT) {
 }
 
 double handleArcadeControl(double &left_motor_voltage,
-                           double &right_motor_voltage) {
+                           double &right_motor_voltage, double scale_factor) {
   // if the turn value is not large unough, disregard and just use
   // Arcade control scheme
   // forward/backward on left stick Y
@@ -439,9 +435,8 @@ void handleDriving(int LEFT_Y_AXIS, int RIGHT_X_AXIS, int RIGHT_Y_AXIS,
 
   // check which driver type the current user has
   if (Users::currentUser->getControlType() == Users::ControlType::Arcade) {
-    handleArcadeControl(
-        left_motor_voltage,
-        right_motor_voltage); // Handle drive control and motor calc
+    handleArcadeControl(left_motor_voltage, right_motor_voltage,
+                        scale_factor); // Handle drive control and motor calc
 
   } else if (Users::currentUser->getControlType() == Users::ControlType::Tank) {
     left_motor_voltage = expo_joystick(LEFT_Y_AXIS, EXPONENT);
@@ -523,17 +518,9 @@ void printDebug(double LEFT_Y_AXIS, double RIGHT_X_AXIS, float left_motor_v,
   //--------------Prints for controller screen----------------------//
 
   char buffer[21]; // character limit of controller display
-  char prevBuffer[21] = "";
   sprintf(buffer, "H: %.1f|X: %.1f|Y: %.1f", correctedHeading, pose.x, pose.y);
-  strcpy(prevBuffer, "");
-  printf("%s", buffer); // trying to print to console
-  if (strcmp(buffer, prevBuffer) == 0) {
-
-  } else {
-    // Buffers are different. Copy the new buffer over for the next comparison.
-    strcpy(prevBuffer, buffer);
-    main_controller.print(0, 0, buffer);
-  }
+  printf("Buffer: %s", buffer); // trying to print to console
+  main_controller.print(0, 0, buffer);
 }
 
 /**

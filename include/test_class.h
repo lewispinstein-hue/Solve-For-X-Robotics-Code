@@ -1,5 +1,6 @@
 #include "main.h"
 #include <cmath>
+#include <string>
 #include <vector>
 
 #define printToBrain pros::screen::print
@@ -12,23 +13,24 @@ private:
   std::vector<double> input3;
   std::vector<double> expectedOutputs;
   Func func;
+  std::string test_name;
   double tolerance;
 
 public:
   // Constructor
   Test(const std::vector<double> &in1, const std::vector<double> &in2,
        const std::vector<double> &in3, const std::vector<double> &expOut,
-       Func f, double tol = 0.1)
-      : input1(in1), input2(in2), input3(in3), expectedOutputs(expOut), func(f),
+       const std::string &test_name, Func f, double tol = 0.1)
+      : input1(in1), input2(in2), input3(in3), expectedOutputs(expOut), test_name(test_name),func(f),
         tolerance(tol) {}
 
   // Run all tests and optionally print results
   int runTestsArgs2(int delay, bool printResults) {
 
-    pros::screen::erase();
-    printToBrain(smallText, 1, "Running expo_joystick test...");
+    clearScreen();
+    printToBrain(smallText, 1, "Running %s test...", test_name);
     pros::delay(delay);
-    pros::screen::erase();
+    clearScreen();
     int tests_passed = 0;
     size_t nTests = expectedOutputs.size();
     double result;
@@ -54,17 +56,17 @@ public:
     if (printResults) {
       printToBrain(smallText, 25, 120, "Tests passed: %d/%d", tests_passed,
                    expectedOutputs.size());
-      pros::delay(delay*2.5);
+      pros::delay(delay * 2.5);
     }
     return tests_passed;
   }
 
   int runTestsArgs3(int delay, bool printResults) {
 
-    pros::screen::erase();
-    printToBrain(smallText, 1, "Running expo_joystick test...");
+    clearScreen();
+    printToBrain(smallText, 1, "Running %s test...", test_name);
     pros::delay(delay);
-    pros::screen::erase();
+    clearScreen();
     int tests_passed = 0;
     size_t nTests = expectedOutputs.size();
     double result;
@@ -91,7 +93,7 @@ public:
     if (printResults) {
       printToBrain(smallText, 25, 120, "Tests passed: %d/%d", tests_passed,
                    expectedOutputs.size());
-      pros::delay(delay*2.5);
+      pros::delay(delay * 2.5);
     }
 
     return tests_passed;

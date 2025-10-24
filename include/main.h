@@ -61,6 +61,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+void clearScreen();
 int testExpoJoystick(int);
 void autonomous(void);
 void initialize(void);
