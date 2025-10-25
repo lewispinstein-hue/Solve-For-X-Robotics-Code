@@ -247,20 +247,8 @@ void updateBallConveyorMotors() {
   }
 }
 
-int pnTimesPushed = 0;
-void handlePneumatics() {
-  funnel_engaged = !funnel_engaged;
-  pnTimesPushed += 1;
-  if (pnTimesPushed >= 20) {
-    funnel_pneumatic_right.set_value(false);
-    funnel_pneumatic_left.set_value(false);
-  } else if (pnTimesPushed >= 17) {
-    main_controller.rumble(".-.");
-    funnel_pneumatic_right.set_value(funnel_engaged);
-    funnel_pneumatic_left.set_value(funnel_engaged);
-  }
-}
 // function to check if any controller buttons are pressed
+int pnTimesPushed = 0;
 void checkControllerButtonPress() {
   // handle pnuematics on button press
   if (main_controller.get_digital_new_press(
@@ -304,9 +292,9 @@ void checkControllerButtonPress() {
   // else if (main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_Y)) {
 
   // }
-  // else if (main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_X)) {
-  //   autonomous();
-  // }
+  else if (main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_X)) {
+    autonomous();
+  }
 }
 
 // clamp function to replace std::clamp
@@ -566,8 +554,40 @@ void autonomous() {
   while (true) {
     chassis.moveToPoint(0, 35, 3000);
     chassis.turnToHeading(-90, 1000);
+    chassis.moveToPoint(20, 35, 3000);
+    chassis.turnToHeading(-180, 1000);
+    funnel_pneumatic_left.extend();
+    funnel_pneumatic_right.extend();
+    chassis.moveToPoint(20, 10, 1000);
+    chassis.setPose(20, 10, -180);
+    // we are now in the loader
+    //  we move back and fourth while intaking
+    //
+    current_ball_conveyor_state = UPPER_GOAL;
+    left_motors_drivetrain.move(100);
+    right_motors_drivetrain.move(100);
+    pros::delay(200);
+    left_motors_drivetrain.move(-20);
+    right_motors_drivetrain.move(-20);
+    pros::delay(200);
+    left_motors_drivetrain.move(100);
+    right_motors_drivetrain.move(100);
+    pros::delay(200);
+    left_motors_drivetrain.move(-20);
+    right_motors_drivetrain.move(-20);
+    pros::delay(200);
+    left_motors_drivetrain.move(100);
+    right_motors_drivetrain.move(100);
+    pros::delay(1200);
+    left_motors_drivetrain.move(0);
+    right_motors_drivetrain.move(0);
+    current_ball_conveyor_state = STOPPED;
+    //now we need to drive backwards and score
+
+    break;
   }
 }
+
 /**
  * Runs the operator control code. This function will be started in its own
  * task with the default priority and stack size whenever the robot is enabled
