@@ -36,3 +36,38 @@ scoring arm = TBD
 
 arcade double stick
 0.25 desaturatebias
+
+
+
+
+For Next tournament:
+Instead of directly applying the joystick to the motor, we can translate it into
+a percent and then apply that percent to the motors. This would solve the
+problems where, when turning, only one wheel moves.
+For example: Y = 30, X = 30
+the left motor would get 60 (y + x), but the right motor would get 0 (y - x)
+making the drivetrain speed proportional instead of a direct calculation from
+the joysticks would make the robot easier to drive
+
+Problems for later:
+The intake chain keeps slipping.
+We need to add some gears on both sides of the chain that are bigger and stop
+the chain from being able to slip
+
+Auton mode:
+We start the game with a ball, so the first priorty is to be able to score that
+ball for the bonus +10.
+After that, we should just make the robot pick up the three balls by the center goal and then score them
+
+Add functions with global scopes that take in an input, and do the appropriate thing (e.g. setPnState(True/false), or )
+
+Turning is very hard. We need to add some special math that makes turning be slower 
+Maybe make turning and driving f/r seperate properites, so that we can make them customizeable
+
+
+Guardrails
+More rubber bands to the intake conveyor
+More rubber bands to secure the motors.
+Better descorer
+
+Add a pneumatic that can stop balls from comming out of the top goal so we do not have to worry about accidently dropping balls

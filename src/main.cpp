@@ -554,6 +554,7 @@ void autonomous() {
   while (true) {
     chassis.moveToPoint(0, 35, 3000);
     chassis.turnToHeading(-90, 1000);
+    chassis.setPose(0, 0, 0);
     chassis.moveToPoint(20, 35, 3000);
     chassis.turnToHeading(-180, 1000);
     funnel_pneumatic_left.extend();
@@ -564,43 +565,30 @@ void autonomous() {
     //  we move back and fourth while intaking
     //
     current_ball_conveyor_state = UPPER_GOAL;
-    left_motors_drivetrain.move(100);
-    right_motors_drivetrain.move(100);
+    left_motors_drivetrain.move(80);
+    right_motors_drivetrain.move(80);
     pros::delay(200);
-    left_motors_drivetrain.move(-20);
-    right_motors_drivetrain.move(-20);
+    left_motors_drivetrain.move(-60);
+    right_motors_drivetrain.move(-60);
     pros::delay(200);
-    left_motors_drivetrain.move(100);
-    right_motors_drivetrain.move(100);
+    left_motors_drivetrain.move(80);
+    right_motors_drivetrain.move(80);
     pros::delay(200);
-    left_motors_drivetrain.move(-20);
-    right_motors_drivetrain.move(-20);
+    left_motors_drivetrain.move(-60);
+    right_motors_drivetrain.move(-60);
     pros::delay(200);
-    left_motors_drivetrain.move(100);
-    right_motors_drivetrain.move(100);
+    left_motors_drivetrain.move(80);
+    right_motors_drivetrain.move(80);
     pros::delay(1200);
     left_motors_drivetrain.move(0);
     right_motors_drivetrain.move(0);
     current_ball_conveyor_state = STOPPED;
-    //now we need to drive backwards and score
+    // now we need to drive backwards and score
 
     break;
   }
 }
 
-/**
- * Runs the operator control code. This function will be started in its own
- * task with the default priority and stack size whenever the robot is enabled
- * via the Field Management System or the VEX Competition Switch in the
- * operator control mode.
- *
- * If no competition control is connected, this function will run immediately
- * following initialize().
- *
- * If the robot is disabled or communications is lost, the
- * operator control task will be stopped. Re-enabling the robot will restart
- * the task, not resume it from where it left off.
- */
 
 void opcontrol() {
   while (true) {
@@ -609,7 +597,7 @@ void opcontrol() {
       printToBrain(smallText, 5,
                    "ERROR. NULLPTR ON POINTER 'Users::currentUser'. STOPPING");
       while (true) {
-        pros::delay(100); // prevent resets, keep message on screen
+        pros::delay(80); // prevent resets, keep message on screen
       }
     }
     // init variables for joystick values
