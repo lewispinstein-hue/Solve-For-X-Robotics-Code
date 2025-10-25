@@ -71,7 +71,7 @@ lemlib::ControllerSettings lateralSettings(12, 0, 2, // kP, kI, kD
                                            30      // max acceleration (slew)
 );
 
-lemlib::ControllerSettings angularSettings(4, 0, 10, 0, 1, 0, 0, 0, 30);
+lemlib::ControllerSettings angularSettings(6, 0, 8, 0, 1, 0, 0, 0, 30);
 
 // creating drivedrain object te be used in chassis
 lemlib::Drivetrain main_drivetrain(
@@ -181,16 +181,16 @@ void initialize() {
   current_ball_conveyor_state = STOPPED; // initial state
 
   // handle tests
-  handleTests();
-  clearScreen();
+  //   handleTests();
+  //   clearScreen();
 }
 
 // visit users_class.h for User setup explanation
-Users eli("Eli   ", 15, 30, 1.6, 1.6, Users::ControlType::Arcade,
+Users eli("Eli     ", 15, 30, 1.6, 1.6, Users::ControlType::Arcade,
           pros::E_CONTROLLER_DIGITAL_R2, pros::E_CONTROLLER_DIGITAL_R1,
           pros::E_CONTROLLER_DIGITAL_L2, pros::E_CONTROLLER_DIGITAL_B);
 
-Users lewis("Lewis", 30, 40, 1.3, 1.4, Users::ControlType::Arcade,
+Users lewis("Lewis", 8, 40, 1.9, 1.4, Users::ControlType::Arcade,
             pros::E_CONTROLLER_DIGITAL_R2, pros::E_CONTROLLER_DIGITAL_R1,
             pros::E_CONTROLLER_DIGITAL_UP, pros::E_CONTROLLER_DIGITAL_B);
 
@@ -202,11 +202,12 @@ Users sanjith("Sanjith", 10, 25, 6.7, 6.7, Users::ControlType::Arcade,
               pros::E_CONTROLLER_DIGITAL_R1, pros::E_CONTROLLER_DIGITAL_R2,
               pros::E_CONTROLLER_DIGITAL_L1, pros::E_CONTROLLER_DIGITAL_B);
 
-Users john("John", 12, 12, 1.67, 1.41, Users::ControlType::Tank,
+Users john("Rafi", 12, 12, 1.67, 1.41, Users::ControlType::Tank,
            pros::E_CONTROLLER_DIGITAL_UP, pros::E_CONTROLLER_DIGITAL_DOWN,
            pros::E_CONTROLLER_DIGITAL_A, pros::E_CONTROLLER_DIGITAL_R2);
 
-Users *Users::currentUser = &john; // globally initialize current user as default
+Users *Users::currentUser =
+    &john; // globally initialize current user as default
 
 /**
  * Runs while the robot is in the disabled state of Field Management System or
@@ -280,11 +281,35 @@ void checkControllerButtonPress() {
     chassis.setPose(0, 0, 0);
     chassis.cancelAllMotions();
     main_controller.print(0, 0, "Pose reset to 0,0,0");
-  } else if (main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_Y)) {
-    chassis.turnToHeading(chassis.getPose().theta + 90, 1000);
-  } else if (main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_X)) {
-    chassis.swingToHeading(100, lemlib::DriveSide::LEFT, 5000);
   }
+  // else if (main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_Y)) {
+  //   // chassis.turnToHeading(chassis.getPose().theta + 90, 1000);
+  //   double prevTheta = chassis.getPose().theta;
+  //   while (true) {
+  //     double targetTheta = chassis.getPose().theta + 90.0;
+  //     double kP = 2.0;     // Proportional constant, will need tuning
+  //     double error = 1000; // Initialize with a large error
+
+  //     while (fabs(error) >
+  //            1.0) { // Keep turning until error is less than 1 degree
+  //       error = targetTheta - chassis.getPose().theta;
+
+  //       // Calculate motor speed based on error
+  //       double motorSpeed = error * kP;
+
+  //       // Clamp the speed to prevent it from being too high or too low
+  //       if (motorSpeed > 100)
+  //         motorSpeed = 100;
+  //       if (motorSpeed < -100)
+  //         motorSpeed = -100;
+
+  //       left_motors_drivetrain.move(motorSpeed);
+  //       right_motors_drivetrain.move(-motorSpeed);
+  //     }
+  //   }
+  // } else if (main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_X)) {
+  //   chassis.moveToPoint(0, 10, 1000);
+  // }
 }
 
 // clamp function to replace std::clamp
@@ -331,7 +356,7 @@ double scale_factor = 2;
 double EXPONENT = 1.7;
 
 int track_user = 1;
-constexpr auto sizeOfUsers = 4;
+constexpr auto sizeOfUsers = 5;
 void setActiveUser() {
   // check to see if we are trying to change the user
   if (main_controller.get_digital_new_press(CONTROLLER_UP) &&
@@ -362,6 +387,8 @@ void setActiveUser() {
   case 4:
     Users::currentUser = &sanjith;
     break;
+  case 5:
+    Users::currentUser = &john;
   default:
     Users::currentUser = &eli;
     break;
@@ -544,30 +571,32 @@ void autonomous() {
 
   while (true) {
     checkControllerButtonPress();
-    chassis.moveToPoint(0, 10, 5000);
+    chassis.moveToPoint(0, 25, 5000);
 
     // Only start the reversal logic after the first movement is complete.
-    if (prevTime == 0) {
-      prevTime =
-          pros::millis(); // Set prevTime the first time we enter this part
-    }
+    
+    // if (prevTime == 0) {
+    //   prevTime =
+    //       pros::millis(); // Set prevTime the first time we enter this part
+    // }
 
     // Check if 1 second has passed since we started moving backwards.
     // pros::millis() returns the time since the program started.
-    if (pros::millis() - prevTime < 1000) {
-      // spin motors backwards while the 1s timer is true
-      left_motors_drivetrain.move(-100);
-      right_motors_drivetrain.move(-100);
-    } else {
-      // 1 second has passed, so we can now reset the chassis position and stop
-      // the backwards movement.
-      left_motors_drivetrain.move(0);
-      right_motors_drivetrain.move(0);
-      chassis.setPose(0, 8, 0);
+    // if (pros::millis() - prevTime < 1000) {
+    //   // spin motors backwards while the 1s timer is true
+    //   left_motors_drivetrain.move(-100);
+    //   right_motors_drivetrain.move(-100);
+    // } else {
+    //   // 1 second has passed, so we can now reset the chassis position and stop
+    //   // the backwards movement.
+    //   left_motors_drivetrain.move(0);
+    //   right_motors_drivetrain.move(0);
+    //   chassis.setPose(0, 12, 0);
 
-      // This is a simple autonomous routine, so we can stop after this.
+      chassis.turnToHeading(90, 800);
+      chassis.moveToPoint(15, 25, 1000);
       break;
-    }
+    // }
   }
 }
 
