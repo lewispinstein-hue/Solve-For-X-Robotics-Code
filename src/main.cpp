@@ -68,10 +68,10 @@ lemlib::ControllerSettings lateralSettings(6, 0, 10, // kP, kI, kD
                                            0,      // integral anti-windup range
                                            1, 100, // small error range, timeout
                                            3, 500, // large error range, timeout
-                                           30      // max acceleration (slew)
+                                           0       // max acceleration (slew)
 );
 
-lemlib::ControllerSettings angularSettings(6, 0, 8, 0, 1, 0, 0, 0, 30);
+lemlib::ControllerSettings angularSettings(4, 0, 10, 0, 1, 100, 3, 500, 0);
 
 // creating drivedrain object te be used in chassis
 lemlib::Drivetrain main_drivetrain(
@@ -247,8 +247,20 @@ void updateBallConveyorMotors() {
   }
 }
 
-// function to check if any controller buttons are pressed
 int pnTimesPushed = 0;
+void handlePneumatics() {
+  funnel_engaged = !funnel_engaged;
+  pnTimesPushed += 1;
+  if (pnTimesPushed >= 20) {
+    funnel_pneumatic_right.set_value(false);
+    funnel_pneumatic_left.set_value(false);
+  } else if (pnTimesPushed >= 17) {
+    main_controller.rumble(".-.");
+    funnel_pneumatic_right.set_value(funnel_engaged);
+    funnel_pneumatic_left.set_value(funnel_engaged);
+  }
+}
+// function to check if any controller buttons are pressed
 void checkControllerButtonPress() {
   // handle pnuematics on button press
   if (main_controller.get_digital_new_press(
@@ -284,38 +296,16 @@ void checkControllerButtonPress() {
   }
 
   // testing buttons for lemlib
-  else if (main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_A)) {
-    chassis.setPose(0, 0, 0);
-    chassis.cancelAllMotions();
-    main_controller.print(0, 0, "Pose reset to 0,0,0");
-  }
+  // else if (main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_A)) {
+  //   chassis.setPose(0, 0, 0);
+  //   chassis.cancelAllMotions();
+  //   main_controller.print(0, 0, "Pose reset to 0,0,0");
+  // }
   // else if (main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_Y)) {
-  //   // chassis.turnToHeading(chassis.getPose().theta + 90, 1000);
-  //   double prevTheta = chassis.getPose().theta;
-  //   while (true) {
-  //     double targetTheta = chassis.getPose().theta + 90.0;
-  //     double kP = 2.0;     // Proportional constant, will need tuning
-  //     double error = 1000; // Initialize with a large error
 
-  //     while (fabs(error) >
-  //            1.0) { // Keep turning until error is less than 1 degree
-  //       error = targetTheta - chassis.getPose().theta;
-
-  //       // Calculate motor speed based on error
-  //       double motorSpeed = error * kP;
-
-  //       // Clamp the speed to prevent it from being too high or too low
-  //       if (motorSpeed > 100)
-  //         motorSpeed = 100;
-  //       if (motorSpeed < -100)
-  //         motorSpeed = -100;
-
-  //       left_motors_drivetrain.move(motorSpeed);
-  //       right_motors_drivetrain.move(-motorSpeed);
-  //     }
-  //   }
-  // } else if (main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_X)) {
-  //   chassis.moveToPoint(0, 10, 1000);
+  // }
+  // else if (main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_X)) {
+  //   autonomous();
   // }
 }
 
@@ -573,38 +563,9 @@ void printDebug(double LEFT_Y_AXIS, double RIGHT_X_AXIS, float left_motor_v,
  */
 
 void autonomous() {
-  uint32_t prevTime = 0; // initialize prevTime outside the loop
-
   while (true) {
-    checkControllerButtonPress();
-    // chassis.moveToPoint(0, 25, 5000);
-
-    // Only start the reversal logic after the first movement is complete.
-
-    if (prevTime == 0) {
-      prevTime =
-          pros::millis(); // Set prevTime the first time we enter this part
-    }
-
-    // Check if 1 second has passed since we started moving backwards.
-    // pros::millis();  returns the time since the program started.
-    if (pros::millis() - prevTime < 3000) {
-      // spin motors backwards while the 1s timer is true
-      left_motors_drivetrain.move(-100);
-      right_motors_drivetrain.move(-100);
-    } else {
-      // 1 second has passed, so we can now reset the chassis position and stop
-      // the backwards movement.
-      left_motors_drivetrain.move(0);
-      right_motors_drivetrain.move(0);
-      chassis.setPose(0, 12, 0);
-
-      // chassis.turnToHeading(90, 800);
-      // chassis.moveToPoint(15, 25, 1000);
-
-      break;
-      // }
-    }
+    chassis.moveToPoint(0, 35, 3000);
+    chassis.turnToHeading(-90, 1000);
   }
 }
 /**
