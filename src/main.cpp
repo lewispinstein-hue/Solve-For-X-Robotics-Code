@@ -64,7 +64,7 @@ lemlib::OdomSensors
     );
 
 // settings lemlib uses (need to be tweaked)
-lemlib::ControllerSettings lateralSettings(12, 0, 2, // kP, kI, kD
+lemlib::ControllerSettings lateralSettings(6, 0, 10, // kP, kI, kD
                                            0,      // integral anti-windup range
                                            1, 100, // small error range, timeout
                                            3, 500, // large error range, timeout
@@ -248,13 +248,25 @@ void updateBallConveyorMotors() {
 }
 
 // function to check if any controller buttons are pressed
+int pnTimesPushed = 0;
 void checkControllerButtonPress() {
   // handle pnuematics on button press
   if (main_controller.get_digital_new_press(
           Users::currentUser->getPnButton())) {
     funnel_engaged = !funnel_engaged;
-    funnel_pneumatic_right.set_value(funnel_engaged);
-    funnel_pneumatic_left.set_value(funnel_engaged);
+    pnTimesPushed += 1;
+    if (pnTimesPushed >= 20) {
+      funnel_pneumatic_right.set_value(false);
+      funnel_pneumatic_left.set_value(false);
+    } else if (pnTimesPushed >= 17) {
+      main_controller.rumble(".-.");
+      funnel_pneumatic_right.set_value(funnel_engaged);
+      funnel_pneumatic_left.set_value(funnel_engaged);
+    } else {
+      funnel_pneumatic_right.set_value(funnel_engaged);
+      funnel_pneumatic_left.set_value(funnel_engaged);
+    }
+
   } else if (main_controller.get_digital_new_press(
                  Users::currentUser->getSfMediumGoal())) {
     // for toggleable button
@@ -519,8 +531,9 @@ void printDebug(double LEFT_Y_AXIS, double RIGHT_X_AXIS, float left_motor_v,
     correctedHeading += 360;
   }
   // print pose from lemlib
-  printToBrain(smallText, 25, 100, "Heading: %.2f | Corrected Heading: %.1f   ",
-               pose.theta, correctedHeading);
+  printToBrain(smallText, 25, 100,
+               "Times Pushed: %d | Corrected Heading: %.1f   ", pnTimesPushed,
+               correctedHeading);
   printToBrain(smallText, 25, 120, "X Relative: %.2f | Y Relative: %.2f   ",
                pose.x, pose.y);
   // create variables for comparison
