@@ -186,11 +186,11 @@ void initialize() {
 }
 
 // visit users_class.h for User setup explanation
-Users eli("Eli     ", 15, 30, 1.6, 1.6, Users::ControlType::Arcade,
+Users eli("Eli     ", 25, 40, 1.8, 1.6, Users::ControlType::Arcade,
           pros::E_CONTROLLER_DIGITAL_R2, pros::E_CONTROLLER_DIGITAL_R1,
           pros::E_CONTROLLER_DIGITAL_L2, pros::E_CONTROLLER_DIGITAL_B);
 
-Users lewis("Lewis", 8, 40, 1.9, 1.4, Users::ControlType::Arcade,
+Users lewis("Lewis", 25, 40, 1.9, 1.4, Users::ControlType::Arcade,
             pros::E_CONTROLLER_DIGITAL_R2, pros::E_CONTROLLER_DIGITAL_R1,
             pros::E_CONTROLLER_DIGITAL_UP, pros::E_CONTROLLER_DIGITAL_B);
 
@@ -198,16 +198,11 @@ Users ian("Ian", 20, 30, 2.1, 1.5, Users::ControlType::Arcade,
           pros::E_CONTROLLER_DIGITAL_R2, pros::E_CONTROLLER_DIGITAL_R1,
           pros::E_CONTROLLER_DIGITAL_L2, pros::E_CONTROLLER_DIGITAL_A);
 
-Users sanjith("Sanjith", 10, 25, 6.7, 6.7, Users::ControlType::Arcade,
+Users sanjith("Sanjith", 25, 40, 2.1, 1.5, Users::ControlType::Arcade,
               pros::E_CONTROLLER_DIGITAL_R1, pros::E_CONTROLLER_DIGITAL_R2,
               pros::E_CONTROLLER_DIGITAL_L1, pros::E_CONTROLLER_DIGITAL_B);
 
-Users john("Rafi", 12, 12, 1.67, 1.41, Users::ControlType::Tank,
-           pros::E_CONTROLLER_DIGITAL_UP, pros::E_CONTROLLER_DIGITAL_DOWN,
-           pros::E_CONTROLLER_DIGITAL_A, pros::E_CONTROLLER_DIGITAL_R2);
-
-Users *Users::currentUser =
-    &john; // globally initialize current user as default
+Users *Users::currentUser = &sanjith; // globally initialize default user
 
 /**
  * Runs while the robot is in the disabled state of Field Management System or
@@ -356,7 +351,7 @@ double scale_factor = 2;
 double EXPONENT = 1.7;
 
 int track_user = 1;
-constexpr auto sizeOfUsers = 5;
+constexpr auto sizeOfUsers = 4;
 void setActiveUser() {
   // check to see if we are trying to change the user
   if (main_controller.get_digital_new_press(CONTROLLER_UP) &&
@@ -387,8 +382,6 @@ void setActiveUser() {
   case 4:
     Users::currentUser = &sanjith;
     break;
-  case 5:
-    Users::currentUser = &john;
   default:
     Users::currentUser = &eli;
     break;
@@ -567,39 +560,40 @@ void printDebug(double LEFT_Y_AXIS, double RIGHT_X_AXIS, float left_motor_v,
  */
 
 void autonomous() {
-  uint32_t prevTime = 0; // Initialize prevTime outside the loop
+  uint32_t prevTime = 0; // initialize prevTime outside the loop
 
   while (true) {
     checkControllerButtonPress();
-    chassis.moveToPoint(0, 25, 5000);
+    // chassis.moveToPoint(0, 25, 5000);
 
     // Only start the reversal logic after the first movement is complete.
-    
-    // if (prevTime == 0) {
-    //   prevTime =
-    //       pros::millis(); // Set prevTime the first time we enter this part
-    // }
+
+    if (prevTime == 0) {
+      prevTime =
+          pros::millis(); // Set prevTime the first time we enter this part
+    }
 
     // Check if 1 second has passed since we started moving backwards.
-    // pros::millis() returns the time since the program started.
-    // if (pros::millis() - prevTime < 1000) {
-    //   // spin motors backwards while the 1s timer is true
-    //   left_motors_drivetrain.move(-100);
-    //   right_motors_drivetrain.move(-100);
-    // } else {
-    //   // 1 second has passed, so we can now reset the chassis position and stop
-    //   // the backwards movement.
-    //   left_motors_drivetrain.move(0);
-    //   right_motors_drivetrain.move(0);
-    //   chassis.setPose(0, 12, 0);
+    // pros::millis();  returns the time since the program started.
+    if (pros::millis() - prevTime < 3000) {
+      // spin motors backwards while the 1s timer is true
+      left_motors_drivetrain.move(-100);
+      right_motors_drivetrain.move(-100);
+    } else {
+      // 1 second has passed, so we can now reset the chassis position and stop
+      // the backwards movement.
+      left_motors_drivetrain.move(0);
+      right_motors_drivetrain.move(0);
+      chassis.setPose(0, 12, 0);
 
-      chassis.turnToHeading(90, 800);
-      chassis.moveToPoint(15, 25, 1000);
+      // chassis.turnToHeading(90, 800);
+      // chassis.moveToPoint(15, 25, 1000);
+
       break;
-    // }
+      // }
+    }
   }
 }
-
 /**
  * Runs the operator control code. This function will be started in its own
  * task with the default priority and stack size whenever the robot is enabled
@@ -615,7 +609,6 @@ void autonomous() {
  */
 
 void opcontrol() {
-  autonomous();
   while (true) {
     // make sure that the Users::currentUser contains a valid pointer
     if (Users::currentUser == nullptr) {
