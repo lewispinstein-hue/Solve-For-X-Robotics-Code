@@ -551,7 +551,7 @@ void printDebug(double LEFT_Y_AXIS, double RIGHT_X_AXIS, float left_motor_v,
  */
 
 void autonomous() {
-  while (true) {
+  while (1==2) {
     chassis.moveToPoint(0, 35, 3000);
     chassis.turnToHeading(-90, 1000);
     chassis.setPose(0, 0, 0);
