@@ -26,7 +26,7 @@
 **/
 
 /**
- * @example 
+ * @example
  **/
 
 class Users {
@@ -41,9 +41,10 @@ protected:
   int SLEW_MAX;
   int SLEW_MIN;
   double SCALE_FACTOR;
-  double EXPONENT;
+  double EXPONENT_FOWARDS;
+  double EXPONENT_TURN;
   ControlType control_type;
-  pros::controller_digital_e_t sf_high_goal; /// button for high goal conveyor
+  pros::controller_digital_e_t sf_high_goal;   /// button for high goal conveyor
   pros::controller_digital_e_t sf_medium_goal; /// button for low goal conveyor
   pros::controller_digital_e_t sf_low_goal; //!< button for bottom goal conveyor
   pros::controller_digital_e_t pn_button;   //!< button for pneumatic toggle
@@ -65,14 +66,15 @@ public:
    */
 
   // constructor
-  Users(std::string name, int slew_max, int slew_min, double exponent,
-        double scale_factor, ControlType control,
+  Users(std::string name, int slew_max, int slew_min, double exponent_fw,
+        double exponent_turn, double scale_factor, ControlType control,
         pros::controller_digital_e_t sf_high_goal,
         pros::controller_digital_e_t sf_medium_goal,
         pros::controller_digital_e_t sf_low_goal,
         pros::controller_digital_e_t pn_button)
       : name(name), SLEW_MAX(slew_max), SLEW_MIN(slew_min),
-        SCALE_FACTOR(scale_factor), EXPONENT(exponent), control_type(control),
+        SCALE_FACTOR(scale_factor), EXPONENT_FOWARDS(exponent_fw),
+        EXPONENT_TURN(exponent_turn), control_type(control),
         sf_high_goal(sf_high_goal), sf_medium_goal(sf_medium_goal),
         sf_low_goal(sf_low_goal), pn_button(pn_button) {}
 
@@ -86,7 +88,7 @@ public:
     this->name = newName;
     this->SLEW_MAX = slew_max;
     this->SLEW_MIN = slew_min;
-    this->EXPONENT = exponent;
+    this->EXPONENT_FOWARDS = exponent;
     this->SCALE_FACTOR = scale_factor;
     this->control_type = control;
     this->sf_high_goal = sf_high_goal;
@@ -99,7 +101,8 @@ public:
   std::string getName() const { return name; }
   int getSlewMax() const { return SLEW_MAX; }
   int getSlewMin() const { return SLEW_MIN; }
-  double getExponent() const { return EXPONENT; }
+  double getExponentFowards() const { return EXPONENT_FOWARDS; }
+  double getExponentTurn() const { return EXPONENT_TURN; }
   double getScaleFactor() const { return SCALE_FACTOR; }
   ControlType getControlType() const { return control_type; }
 

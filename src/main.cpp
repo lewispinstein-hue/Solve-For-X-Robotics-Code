@@ -1,6 +1,5 @@
 #include "main.h"
 #include "lemlib/chassis/chassis.hpp"
-#include "pros/misc.hpp"
 #include "pros/screen.hpp"
 
 // my helper files
@@ -41,18 +40,18 @@ pros::Motor upper_transit_motor(7);
 pros::Motor intake_transit_motor(-2);
 
 // Lemlib initialization
-constexpr float HALF_TRACK = 7.5f / 2.0f;
+constexpr float TRACK_LENGTH = 11.5;
 
 pros::Imu imu(16); // the slot for our imu
 
 // tracking wheels are the built in IME's in the motors
 lemlib::TrackingWheel leftVerticalTrackingWheel(&left_motors_drivetrain,
                                                 lemlib::Omniwheel::NEW_325,
-                                                HALF_TRACK, 600);
+                                                TRACK_LENGTH/2, 540);
 
 lemlib::TrackingWheel rightVerticalTrackingWheel(&right_motors_drivetrain,
                                                  lemlib::Omniwheel::NEW_325,
-                                                 -HALF_TRACK, 600);
+                                                 -TRACK_LENGTH/2, 540);
 
 // sensor init with the sensors we created above
 lemlib::OdomSensors
@@ -77,7 +76,7 @@ lemlib::ControllerSettings angularSettings(4, 0, 10, 0, 1, 100, 3, 500, 0);
 lemlib::Drivetrain main_drivetrain(
     &left_motors_drivetrain,  // left motor group
     &right_motors_drivetrain, // right motor group
-    7.5, // track width in inches (measure center-to-center of wheels)
+    TRACK_LENGTH, // track width in inches (measure center-to-center of wheels)
     lemlib::Omniwheel::NEW_325, // 3.25" omni wheels
     900, // wheel RPM (green cartridge = 200, blue = 600, red = 100)
     2    // chase power (leave as 2 unless tuning)
@@ -97,7 +96,7 @@ enum ball_conveyor_state {
 ball_conveyor_state current_ball_conveyor_state;
 
 // foward declaration for tests
-double expo_joystick(double, double);
+double expo_joystick_foward(double, double);
 double custom_clamp(double, double, double);
 double handleArcadeControl(double &, double &, double);
 /**
@@ -121,10 +120,10 @@ void handleTests() {
   int tests_passed;
   // Initialize Test objects
 
-  // test for expo_joystick
+  // test for expo_joystick_foward
   Test testExpoJoystick({1, 64, 63, 127}, {1, 1.2, 3.1, 2}, {},
-                        {1.0, 55.8, 14.5, 127.0}, "Expo Joystck", expo_joystick,
-                        TOLERANCE);
+                        {1.0, 55.8, 14.5, 127.0}, "Expo Joystck",
+                        expo_joystick_foward, TOLERANCE);
   tests_passed += testExpoJoystick.runTestsArgs2(500, true);
   // tesing custom clamp
   Test customClampTest({305, -102, 491, -230}, {200, -400, 506, -215},
@@ -186,19 +185,19 @@ void initialize() {
 }
 
 // visit users_class.h for User setup explanation
-Users eli("Eli     ", 25, 40, 1.8, 1.6, Users::ControlType::Arcade,
+Users eli("Eli     ", 25, 40, 1.8, 1.6, 3, Users::ControlType::Arcade,
           pros::E_CONTROLLER_DIGITAL_R2, pros::E_CONTROLLER_DIGITAL_R1,
           pros::E_CONTROLLER_DIGITAL_L2, pros::E_CONTROLLER_DIGITAL_B);
 
-Users lewis("Lewis", 25, 40, 1.9, 1.4, Users::ControlType::Arcade,
+Users lewis("Lewis", 25, 40, 1.9, 1.4, 3, Users::ControlType::Arcade,
             pros::E_CONTROLLER_DIGITAL_R2, pros::E_CONTROLLER_DIGITAL_R1,
             pros::E_CONTROLLER_DIGITAL_UP, pros::E_CONTROLLER_DIGITAL_B);
 
-Users ian("Ian", 20, 30, 2.1, 1.5, Users::ControlType::Arcade,
+Users ian("Ian", 20, 30, 2.1, 1.5, 3, Users::ControlType::Arcade,
           pros::E_CONTROLLER_DIGITAL_R2, pros::E_CONTROLLER_DIGITAL_R1,
           pros::E_CONTROLLER_DIGITAL_L2, pros::E_CONTROLLER_DIGITAL_A);
 
-Users sanjith("Sanjith", 25, 40, 2.1, 1.5, Users::ControlType::Arcade,
+Users sanjith("Sanjith", 25, 40, 2.1, 1.5, 3, Users::ControlType::Arcade,
               pros::E_CONTROLLER_DIGITAL_R1, pros::E_CONTROLLER_DIGITAL_R2,
               pros::E_CONTROLLER_DIGITAL_L1, pros::E_CONTROLLER_DIGITAL_B);
 
@@ -297,6 +296,48 @@ void checkControllerButtonPress() {
   }
 }
 
+void testPhysicals() {
+  clearScreen();
+  printToBrain(smallText, 25, 20, "Running Physical Tests...       ");
+  while (true) {
+    printToBrain(smallText, 25, 20, "Testing Conveyor Motors...         ");
+    current_ball_conveyor_state = OUTTAKE;
+    updateBallConveyorMotors();
+    pros::delay(500);
+    current_ball_conveyor_state = UPPER_GOAL;
+    updateBallConveyorMotors();
+    pros::delay(500);
+    current_ball_conveyor_state = MIDDLE_GOAL;
+    updateBallConveyorMotors();
+    pros::delay(500);
+    current_ball_conveyor_state = STOPPED;
+    updateBallConveyorMotors();
+    pros::delay(500);
+    printToBrain(smallText, 25, 20, "Testing Pneumatics...        ");
+    funnel_pneumatic_left.set_value(true);
+    funnel_pneumatic_right.set_value(true);
+    pros::delay(500);
+    funnel_pneumatic_left.set_value(false);
+    funnel_pneumatic_right.set_value(false);
+    pros::delay(500);
+    printToBrain(smallText, 25, 20, "Testing Drivetrain...      ");
+    left_motors_drivetrain.move(60);
+    right_motors_drivetrain.move(60);
+    pros::delay(500);
+    left_motors_drivetrain.move(0);
+    right_motors_drivetrain.move(0);
+    pros::delay(250);
+    left_motors_drivetrain.move(-60);
+    right_motors_drivetrain.move(-60);
+    pros::delay(500);
+    left_motors_drivetrain.move(0);
+    right_motors_drivetrain.move(0);
+    printToBrain(smallText, 25, 20, "Tests completed.      ");
+    pros::delay(1000);
+    return;
+  }
+}
+
 // clamp function to replace std::clamp
 double custom_clamp(double input, double MIN_VALUE, double MAX_VALUE) {
   if (input < MIN_VALUE)
@@ -338,8 +379,8 @@ double slewLimit(double target, double prev, double riseMaxDelta,
 double MAX_DELTA = 2;
 double MIN_DELTA = 2;
 double scale_factor = 2;
-double EXPONENT = 1.7;
-
+double EXPONENT_FOWARDS = 1.7;
+double EXPONENT_TURN = 3;
 int track_user = 1;
 constexpr auto sizeOfUsers = 4;
 void setActiveUser() {
@@ -381,17 +422,36 @@ void setActiveUser() {
   MAX_DELTA = Users::currentUser->getSlewMax();
   MIN_DELTA = Users::currentUser->getSlewMin();
   scale_factor = Users::currentUser->getScaleFactor();
-  EXPONENT = Users::currentUser->getExponent();
+  EXPONENT_FOWARDS = Users::currentUser->getExponentFowards();
+  EXPONENT_TURN = Users::currentUser->getExponentTurn();
+
   // we do not need to update certain members like the keybinds and the drive
   // types because there is nothing to update them to
 }
 
-double expo_joystick(double input, double EXPONENT) {
+double expo_joystick_foward(double input, double EXPONENT_FOWARDS) {
   // function to apply an exponential curve to the input.
   // is is applyed to the fowards and turn values in opcontrol()
-  double normalized = (double)input / 127.0;       // normalize to [-1, 1]
-  double curved = pow(fabs(normalized), EXPONENT); // apply exponential curve
-  curved = curved * (normalized >= 0 ? 1 : -1);    // restore sign
+  double normalized = (double)input / 127.0; // normalize to [-1, 1]
+  double curved =
+      pow(fabs(normalized), EXPONENT_FOWARDS);  // apply exponential curve
+  curved = curved * (normalized >= 0 ? 1 : -1); // restore sign
+
+  // if the output would be too large, dont change the number and pass it off
+  // to the difference calculations
+  if (curved >= 1 || curved <= -1) {
+    return input;
+  }
+  return curved * 127.0; // scale back to motor range
+}
+
+double expo_joystick_turn(double input, double EXPONENT_TURN) {
+  // function to apply an exponential curve to the input.
+  // is is applyed to the fowards and turn values in opcontrol()
+  double normalized = (double)input / 127.0; // normalize to [-1, 1]
+  double curved =
+      pow(fabs(normalized), EXPONENT_TURN);     // apply exponential curve
+  curved = curved * (normalized >= 0 ? 1 : -1); // restore sign
 
   // if the output would be too large, dont change the number and pass it off
   // to the difference calculations
@@ -453,8 +513,8 @@ void handleDriving(int LEFT_Y_AXIS, int RIGHT_X_AXIS, int RIGHT_Y_AXIS,
                         scale_factor); // Handle drive control and motor calc
 
   } else if (Users::currentUser->getControlType() == Users::ControlType::Tank) {
-    left_motor_voltage = expo_joystick(LEFT_Y_AXIS, EXPONENT);
-    right_motor_voltage = expo_joystick(RIGHT_Y_AXIS, EXPONENT);
+    left_motor_voltage = expo_joystick_foward(LEFT_Y_AXIS, EXPONENT_FOWARDS);
+    right_motor_voltage = expo_joystick_foward(RIGHT_Y_AXIS, EXPONENT_FOWARDS);
   }
   handleSlewControl(left_motor_voltage, right_motor_voltage);
 }
@@ -550,8 +610,11 @@ void printDebug(double LEFT_Y_AXIS, double RIGHT_X_AXIS, float left_motor_v,
  * it from where it left off.
  */
 
-void autonomous() {
-  while (true) {
+ void autonomous() {
+  //make sure we set the default position
+  chassis.calibrate();
+  chassis.setPose(0, 0, 0);
+  //start 
     chassis.moveToPoint(0, 35, 3000);
     chassis.turnToHeading(-90, 1000);
     chassis.setPose(0, 0, 0);
@@ -563,7 +626,7 @@ void autonomous() {
     chassis.setPose(20, 10, -180);
     // we are now in the loader
     //  we move back and fourth while intaking
-    //
+    // to agitate the balls into going into our conveyor
     current_ball_conveyor_state = UPPER_GOAL;
     left_motors_drivetrain.move(80);
     right_motors_drivetrain.move(80);
@@ -584,11 +647,11 @@ void autonomous() {
     right_motors_drivetrain.move(0);
     current_ball_conveyor_state = STOPPED;
     // now we need to drive backwards and score
-
-    break;
-  }
+    // after we go backwards and score in the high goals
+    // we need to calibrate becuase the place where we are going to be scoring
+    // can lock the robot into a known space
+    // which means we can reset lemlib odometry to make it more accurate
 }
-
 
 void opcontrol() {
   while (true) {
@@ -601,18 +664,18 @@ void opcontrol() {
       }
     }
     // init variables for joystick values
-    int LEFT_Y_AXIS = main_controller.get_analog(CONTROLLER_LEFT_Y);
-    int RIGHT_X_AXIS = main_controller.get_analog(CONTROLLER_RIGHT_X);
-    int RIGHT_Y_AXIS = main_controller.get_analog(CONTROLLER_RIGHT_Y);
+    double LEFT_Y_AXIS = main_controller.get_analog(CONTROLLER_LEFT_Y);
+    double RIGHT_X_AXIS = main_controller.get_analog(CONTROLLER_RIGHT_X);
+    double RIGHT_Y_AXIS = main_controller.get_analog(CONTROLLER_RIGHT_Y);
 
     // deadzone for joystick values
-    if (abs(LEFT_Y_AXIS) < 5)
+    if (fabs(LEFT_Y_AXIS) < 5)
       LEFT_Y_AXIS = 0;
-    if (abs(RIGHT_X_AXIS) < 5)
+    if (fabs(RIGHT_X_AXIS) < 5)
       RIGHT_X_AXIS = 0;
 
-    double forward = expo_joystick(LEFT_Y_AXIS, EXPONENT);
-    double turn = expo_joystick(RIGHT_X_AXIS, EXPONENT);
+    double forward = expo_joystick_foward(LEFT_Y_AXIS, EXPONENT_FOWARDS);
+    double turn = expo_joystick_turn(RIGHT_X_AXIS, EXPONENT_FOWARDS);
     double left_motor_voltage = forward + turn;
     double right_motor_voltage = forward - turn;
 
