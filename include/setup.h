@@ -1,6 +1,7 @@
 #pragma once
 
 // headers for setup
+#include "main.h"
 #include "conveyor_handle.h"
 #include "lemlib/chassis/chassis.hpp"
 #include "test_class.h"
@@ -50,9 +51,6 @@ double custom_clamp(double, double, double);
 double handleArcadeControl(double &, double &, double);
 // foward declarations for other
 void clearScreen();
-void handleSetupSelections();
-void testPhysicals();
-extern std::vector<bool> testsToRun;
 
 // users people
 extern Users lewis;

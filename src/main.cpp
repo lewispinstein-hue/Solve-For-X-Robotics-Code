@@ -12,7 +12,7 @@ void initialize() {
   intake_transit_motor.set_brake_mode(pros::MotorBrake::brake);
   // handle tests
   handleSetupSelections();
-
+  //run the acording tests
   if (testsToRun[0] == true) {
     clearScreen();
     handleSoftwareTests();
@@ -90,44 +90,6 @@ void checkControllerButtonPress() {
   } else if (main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_Y)) {
   } else if (main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_X)) {
     autonomous();
-  }
-}
-
-void testPhysicals() {
-  clearScreen();
-  printToBrain(smallText, 25, 20, "Running Physical Tests...       ");
-  while (true) {
-    printToBrain(smallText, 25, 20, "Testing Conveyor Motors...         ");
-    updateBallConveyorMotors(OUTTAKE);
-    pros::delay(500);
-    updateBallConveyorMotors(UPPER_GOAL);
-    pros::delay(500);
-    updateBallConveyorMotors(MIDDLE_GOAL);
-    pros::delay(500);
-    updateBallConveyorMotors(STOPPED);
-    pros::delay(500);
-    printToBrain(smallText, 25, 20, "Testing Pneumatics...        ");
-    funnel_pneumatic_left.set_value(true);
-    funnel_pneumatic_right.set_value(true);
-    pros::delay(500);
-    funnel_pneumatic_left.set_value(false);
-    funnel_pneumatic_right.set_value(false);
-    pros::delay(500);
-    printToBrain(smallText, 25, 20, "Testing Drivetrain...      ");
-    left_motors_drivetrain.move(60);
-    right_motors_drivetrain.move(60);
-    pros::delay(500);
-    left_motors_drivetrain.move(0);
-    right_motors_drivetrain.move(0);
-    pros::delay(250);
-    left_motors_drivetrain.move(-60);
-    right_motors_drivetrain.move(-60);
-    pros::delay(500);
-    left_motors_drivetrain.move(0);
-    right_motors_drivetrain.move(0);
-    printToBrain(smallText, 25, 20, "Tests completed.      ");
-    pros::delay(1000);
-    return;
   }
 }
 

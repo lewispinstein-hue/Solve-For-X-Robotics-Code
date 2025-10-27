@@ -1,6 +1,7 @@
 // this is the file for running tests. Add tests here
 #include "setup.h"
 
+//software tests - internal
 void handleSoftwareTests() {
   // for floating point inacuracies
   constexpr double TOLERANCE = 0.05;
@@ -54,4 +55,77 @@ void handleSoftwareTests() {
     }
     pros::delay(20); // prevent unneed strain on CPU
   }
+}
+
+//hardware tests - external
+void testPhysicals() {
+  clearScreen();
+  printToBrain(smallText, 25, 20, "Running Physical Tests...       ");
+  while (true) {
+    printToBrain(smallText, 25, 20, "Testing Conveyor Motors...         ");
+    updateBallConveyorMotors(OUTTAKE);
+    pros::delay(500);
+    updateBallConveyorMotors(UPPER_GOAL);
+    pros::delay(500);
+    updateBallConveyorMotors(MIDDLE_GOAL);
+    pros::delay(500);
+    updateBallConveyorMotors(STOPPED);
+    pros::delay(500);
+    printToBrain(smallText, 25, 20, "Testing Pneumatics...        ");
+    funnel_pneumatic_left.set_value(true);
+    funnel_pneumatic_right.set_value(true);
+    pros::delay(500);
+    funnel_pneumatic_left.set_value(false);
+    funnel_pneumatic_right.set_value(false);
+    pros::delay(500);
+    printToBrain(smallText, 25, 20, "Testing Drivetrain...      ");
+    left_motors_drivetrain.move(60);
+    right_motors_drivetrain.move(60);
+    pros::delay(500);
+    left_motors_drivetrain.move(0);
+    right_motors_drivetrain.move(0);
+    pros::delay(250);
+    left_motors_drivetrain.move(-60);
+    right_motors_drivetrain.move(-60);
+    pros::delay(500);
+    left_motors_drivetrain.move(0);
+    right_motors_drivetrain.move(0);
+    printToBrain(smallText, 25, 20, "Tests completed.      ");
+    pros::delay(1000);
+    return;
+  }
+}
+
+// this is the section when we ask what setup tasks to run
+std::vector<bool> testsToRun(2, false);
+void handleSetupSelections() {
+  while (true) {
+    printToBrain(smallText, 25, 40, "Would you like to run Software tests?");
+    if (main_controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_A)) {
+      printToBrain(smallText, 25, 40, "Selected: TRUE");
+      testsToRun[0] = true;
+      break;
+    } else if (main_controller.get_digital_new_press(
+                   pros::E_CONTROLLER_DIGITAL_X)) {
+      printToBrain(smallText, 25, 40, "Selected: FALSE");
+      testsToRun[0] = false;
+      break;
+    }
+    pros::delay(20); // prevent unneed strain on CPU
+  }
+  while (true) {
+    printToBrain(smallText, 25, 40, "Would you like to run Physical tests?");
+    if (main_controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_A)) {
+      printToBrain(smallText, 25, 40, "Selected: TRUE");
+      testsToRun[1] = true;
+      break;
+    } else if (main_controller.get_digital_new_press(
+                   pros::E_CONTROLLER_DIGITAL_X)) {
+      printToBrain(smallText, 25, 40, "Selected: FALSE");
+      testsToRun[1] = false;
+      break;
+    }
+    pros::delay(20); // prevent unneed strain on CPU
+  }
+  return;
 }
