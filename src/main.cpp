@@ -3,6 +3,7 @@
 #include "pros/screen.hpp"
 
 // my helper files
+#include "conveyor_handle.h"
 #include "test_class.h"
 #include "users_class.h"
 
@@ -35,23 +36,21 @@ bool funnel_engaged = false;
 pros::adi::Pneumatics funnel_pneumatic_right('H', funnel_engaged);
 pros::adi::Pneumatics funnel_pneumatic_left('G', funnel_engaged);
 
-// intake and transit motors
-pros::Motor upper_transit_motor(7);
-pros::Motor intake_transit_motor(-2);
-
 // Lemlib initialization
-constexpr float TRACK_LENGTH = 11.5;
+
+// the length of our robot from furthest wheel to closest wheel on the same side
+constexpr float TRACK_WIDTH = 11.5;
 
 pros::Imu imu(16); // the slot for our imu
 
 // tracking wheels are the built in IME's in the motors
 lemlib::TrackingWheel leftVerticalTrackingWheel(&left_motors_drivetrain,
                                                 lemlib::Omniwheel::NEW_325,
-                                                TRACK_LENGTH/2, 540);
+                                                (TRACK_WIDTH / 2), 540);
 
 lemlib::TrackingWheel rightVerticalTrackingWheel(&right_motors_drivetrain,
                                                  lemlib::Omniwheel::NEW_325,
-                                                 -TRACK_LENGTH/2, 540);
+                                                 ((-TRACK_WIDTH) / 2), 540);
 
 // sensor init with the sensors we created above
 lemlib::OdomSensors
@@ -76,24 +75,15 @@ lemlib::ControllerSettings angularSettings(4, 0, 10, 0, 1, 100, 3, 500, 0);
 lemlib::Drivetrain main_drivetrain(
     &left_motors_drivetrain,  // left motor group
     &right_motors_drivetrain, // right motor group
-    TRACK_LENGTH, // track width in inches (measure center-to-center of wheels)
+    TRACK_WIDTH, // track width in inches (measure center-to-center of wheels)
     lemlib::Omniwheel::NEW_325, // 3.25" omni wheels
-    900, // wheel RPM (green cartridge = 200, blue = 600, red = 100)
+    400, // wheel RPM (green cartridge = 200, blue = 600, red = 100)
     2    // chase power (leave as 2 unless tuning)
 );
 
 // creating chassis for odometry and PID
 lemlib::Chassis chassis(main_drivetrain, lateralSettings, angularSettings,
                         odomSensors);
-
-// enum for ball conveyer belt
-enum ball_conveyor_state {
-  UPPER_GOAL,  // intake balls || spin both up
-  MIDDLE_GOAL, // outtake balls || spin INTAKE_TRANSIST up, UPPER_TRANSIT down
-  OUTTAKE,     // outtake balls || spin both down
-  STOPPED      // stop both motors
-};
-ball_conveyor_state current_ball_conveyor_state;
 
 // foward declaration for tests
 double expo_joystick_foward(double, double);
@@ -133,7 +123,7 @@ void handleTests() {
 
   std::vector<double> leftYArcade = {127, -127, 127, 0, 0, 20, 50, 35};
   std::vector<double> rightXArcade = {0, 0, 127, 127, -127, 0, 50, 80};
-  std::vector<double> testingScaleFactor = {2, 2, 2, 2, 2, 2, 2, 2};
+  std::vector<double> testingScaleFactor(rightXArcade.size(), 2);
   std::vector<double> expectedOutArcade = {254, -254, 191, 0, 0, 20, 100, 65};
 
   Test testArcadeControl(leftYArcade, rightXArcade, testingScaleFactor,
@@ -176,9 +166,6 @@ void initialize() {
   right_motors_drivetrain.set_brake_mode(pros::MotorBrake::brake);
   upper_transit_motor.set_brake_mode(pros::MotorBrake::brake);
   intake_transit_motor.set_brake_mode(pros::MotorBrake::brake);
-
-  current_ball_conveyor_state = STOPPED; // initial state
-
   // handle tests
   //   handleTests();
   //   clearScreen();
@@ -225,26 +212,6 @@ void disabled() {
 void competition_initialize(){};
 
 // function to update conveyor motors based on enum states
-void updateBallConveyorMotors() {
-  switch (current_ball_conveyor_state) {
-  case UPPER_GOAL:
-    upper_transit_motor.move(127);  // spin upper transit motor
-    intake_transit_motor.move(127); // spin intake transit motor
-    break;
-  case MIDDLE_GOAL:
-    upper_transit_motor.move(-127); // spin upper transit
-    intake_transit_motor.move(127); // spin intake transit
-    break;
-  case OUTTAKE:
-    upper_transit_motor.move(-127);  // spin upper transit motor
-    intake_transit_motor.move(-127); // spin intake transit motor
-    break;
-  case STOPPED:
-    upper_transit_motor.move(0);
-    intake_transit_motor.move(0);
-    break;
-  }
-}
 
 // function to check if any controller buttons are pressed
 int pnTimesPushed = 0;
@@ -265,33 +232,29 @@ void checkControllerButtonPress() {
       funnel_pneumatic_right.set_value(funnel_engaged);
       funnel_pneumatic_left.set_value(funnel_engaged);
     }
-
   } else if (main_controller.get_digital_new_press(
                  Users::currentUser->getSfMediumGoal())) {
     // for toggleable button
-    current_ball_conveyor_state =
-        (current_ball_conveyor_state == MIDDLE_GOAL) ? STOPPED : MIDDLE_GOAL;
+    updateBallConveyorMotors(
+        ((current_ball_conveyor_state == MIDDLE_GOAL) ? STOPPED : MIDDLE_GOAL));
   } else if (main_controller.get_digital_new_press(
                  Users::currentUser->getSfHighGoal())) {
     // for toggelable button
-    current_ball_conveyor_state =
-        (current_ball_conveyor_state == UPPER_GOAL) ? STOPPED : UPPER_GOAL;
+    updateBallConveyorMotors(
+        (current_ball_conveyor_state == UPPER_GOAL) ? STOPPED : UPPER_GOAL);
   } else if (main_controller.get_digital_new_press(
                  Users::currentUser->getSfBottomGoal())) {
-    current_ball_conveyor_state =
-        (current_ball_conveyor_state == OUTTAKE) ? STOPPED : OUTTAKE;
+    updateBallConveyorMotors(
+        (current_ball_conveyor_state == OUTTAKE) ? STOPPED : OUTTAKE);
   }
 
   // testing buttons for lemlib
-  // else if (main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_A)) {
-  //   chassis.setPose(0, 0, 0);
-  //   chassis.cancelAllMotions();
-  //   main_controller.print(0, 0, "Pose reset to 0,0,0");
-  // }
-  // else if (main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_Y)) {
-
-  // }
-  else if (main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_X)) {
+  else if (main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_A)) {
+    chassis.setPose(0, 0, 0);
+    chassis.cancelAllMotions();
+    main_controller.print(0, 0, "Pose reset to 0,0,0");
+  } else if (main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_Y)) {
+  } else if (main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_X)) {
     autonomous();
   }
 }
@@ -301,17 +264,13 @@ void testPhysicals() {
   printToBrain(smallText, 25, 20, "Running Physical Tests...       ");
   while (true) {
     printToBrain(smallText, 25, 20, "Testing Conveyor Motors...         ");
-    current_ball_conveyor_state = OUTTAKE;
-    updateBallConveyorMotors();
+    updateBallConveyorMotors(OUTTAKE);
     pros::delay(500);
-    current_ball_conveyor_state = UPPER_GOAL;
-    updateBallConveyorMotors();
+    updateBallConveyorMotors(UPPER_GOAL);
     pros::delay(500);
-    current_ball_conveyor_state = MIDDLE_GOAL;
-    updateBallConveyorMotors();
+    updateBallConveyorMotors(MIDDLE_GOAL);
     pros::delay(500);
-    current_ball_conveyor_state = STOPPED;
-    updateBallConveyorMotors();
+    updateBallConveyorMotors(STOPPED);
     pros::delay(500);
     printToBrain(smallText, 25, 20, "Testing Pneumatics...        ");
     funnel_pneumatic_left.set_value(true);
@@ -514,7 +473,7 @@ void handleDriving(int LEFT_Y_AXIS, int RIGHT_X_AXIS, int RIGHT_Y_AXIS,
 
   } else if (Users::currentUser->getControlType() == Users::ControlType::Tank) {
     left_motor_voltage = expo_joystick_foward(LEFT_Y_AXIS, EXPONENT_FOWARDS);
-    right_motor_voltage = expo_joystick_foward(RIGHT_Y_AXIS, EXPONENT_FOWARDS);
+    right_motor_voltage = expo_joystick_turn(RIGHT_Y_AXIS, EXPONENT_TURN);
   }
   handleSlewControl(left_motor_voltage, right_motor_voltage);
 }
@@ -610,47 +569,47 @@ void printDebug(double LEFT_Y_AXIS, double RIGHT_X_AXIS, float left_motor_v,
  * it from where it left off.
  */
 
- void autonomous() {
-  //make sure we set the default position
+void autonomous() {
+  // make sure we set the default position
   chassis.calibrate();
   chassis.setPose(0, 0, 0);
-  //start 
-    chassis.moveToPoint(0, 35, 3000);
-    chassis.turnToHeading(-90, 1000);
-    chassis.setPose(0, 0, 0);
-    chassis.moveToPoint(20, 35, 3000);
-    chassis.turnToHeading(-180, 1000);
-    funnel_pneumatic_left.extend();
-    funnel_pneumatic_right.extend();
-    chassis.moveToPoint(20, 10, 1000);
-    chassis.setPose(20, 10, -180);
-    // we are now in the loader
-    //  we move back and fourth while intaking
-    // to agitate the balls into going into our conveyor
-    current_ball_conveyor_state = UPPER_GOAL;
-    left_motors_drivetrain.move(80);
-    right_motors_drivetrain.move(80);
-    pros::delay(200);
-    left_motors_drivetrain.move(-60);
-    right_motors_drivetrain.move(-60);
-    pros::delay(200);
-    left_motors_drivetrain.move(80);
-    right_motors_drivetrain.move(80);
-    pros::delay(200);
-    left_motors_drivetrain.move(-60);
-    right_motors_drivetrain.move(-60);
-    pros::delay(200);
-    left_motors_drivetrain.move(80);
-    right_motors_drivetrain.move(80);
-    pros::delay(1200);
-    left_motors_drivetrain.move(0);
-    right_motors_drivetrain.move(0);
-    current_ball_conveyor_state = STOPPED;
-    // now we need to drive backwards and score
-    // after we go backwards and score in the high goals
-    // we need to calibrate becuase the place where we are going to be scoring
-    // can lock the robot into a known space
-    // which means we can reset lemlib odometry to make it more accurate
+  // start auton period
+  chassis.moveToPoint(0, 35, 3000);
+  chassis.turnToHeading(-90, 1000);
+  chassis.setPose(0, 0, 0);
+  chassis.moveToPoint(20, 35, 3000);
+  chassis.turnToHeading(-180, 1000);
+  funnel_pneumatic_left.extend();
+  funnel_pneumatic_right.extend();
+  chassis.moveToPoint(20, 10, 1000);
+  chassis.setPose(20, 10, -180);
+  // we are now in the loader
+  //  we move back and fourth while intaking
+  // to agitate the balls into going into our conveyor
+  updateBallConveyorMotors(UPPER_GOAL);
+  left_motors_drivetrain.move(80);
+  right_motors_drivetrain.move(80);
+  pros::delay(200);
+  left_motors_drivetrain.move(-60);
+  right_motors_drivetrain.move(-60);
+  pros::delay(200);
+  left_motors_drivetrain.move(80);
+  right_motors_drivetrain.move(80);
+  pros::delay(200);
+  left_motors_drivetrain.move(-60);
+  right_motors_drivetrain.move(-60);
+  pros::delay(200);
+  left_motors_drivetrain.move(80);
+  right_motors_drivetrain.move(80);
+  pros::delay(1200);
+  left_motors_drivetrain.move(0);
+  right_motors_drivetrain.move(0);
+  updateBallConveyorMotors(STOPPED);
+  // now we need to drive backwards and score
+  // after we go backwards and score in the high goals
+  // we need to calibrate becuase the place where we are going to be scoring
+  // can lock the robot into a known space
+  // which means we can reset lemlib odometry to make it more accurate
 }
 
 void opcontrol() {
@@ -667,7 +626,6 @@ void opcontrol() {
     double LEFT_Y_AXIS = main_controller.get_analog(CONTROLLER_LEFT_Y);
     double RIGHT_X_AXIS = main_controller.get_analog(CONTROLLER_RIGHT_X);
     double RIGHT_Y_AXIS = main_controller.get_analog(CONTROLLER_RIGHT_Y);
-
     // deadzone for joystick values
     if (fabs(LEFT_Y_AXIS) < 5)
       LEFT_Y_AXIS = 0;
@@ -675,14 +633,12 @@ void opcontrol() {
       RIGHT_X_AXIS = 0;
 
     double forward = expo_joystick_foward(LEFT_Y_AXIS, EXPONENT_FOWARDS);
-    double turn = expo_joystick_turn(RIGHT_X_AXIS, EXPONENT_FOWARDS);
+    double turn = expo_joystick_turn(RIGHT_X_AXIS, EXPONENT_TURN);
     double left_motor_voltage = forward + turn;
     double right_motor_voltage = forward - turn;
 
     checkControllerButtonPress(); // Check if any controller buttons are
                                   // pressed
-    updateBallConveyorMotors();   // handle the enum that controlls the ball
-                                  // conveyors
     setActiveUser();
     handleDriving(LEFT_Y_AXIS, RIGHT_X_AXIS, RIGHT_Y_AXIS, left_motor_voltage,
                   right_motor_voltage);

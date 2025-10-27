@@ -21,8 +21,8 @@ public:
   Test(const std::vector<double> &in1, const std::vector<double> &in2,
        const std::vector<double> &in3, const std::vector<double> &expOut,
        const std::string &test_name, Func f, double tol = 0.1)
-      : input1(in1), input2(in2), input3(in3), expectedOutputs(expOut), test_name(test_name),func(f),
-        tolerance(tol) {}
+      : input1(in1), input2(in2), input3(in3), expectedOutputs(expOut),
+        test_name(test_name), func(f), tolerance(tol) {}
 
   // Run all tests and optionally print results
   int runTestsArgs2(int delay, bool printResults) {
@@ -48,7 +48,7 @@ public:
         }
       } else if (printResults) {
         printToBrain(smallText, 25, (i * 20) + 20,
-                     "Test %d Failed. Expected: %.2f, got %.2f",
+                     "Test %d Failed. Expected: %.2f, got %.2f", i, 
                      expectedOutputs[i], result);
       }
     }
