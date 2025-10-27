@@ -1,11 +1,12 @@
 #pragma once
 
-// headers for setup
+// headers for setup and other files
 #include "main.h"
 #include "conveyor_handle.h"
 #include "lemlib/chassis/chassis.hpp"
 #include "test_class.h"
 #include "users_class.h"
+#include "auton.h"
 
 // defines for controller buttons for readability
 #define CONTROLLER_UP pros::E_CONTROLLER_DIGITAL_UP
@@ -47,7 +48,6 @@ extern lemlib::Chassis chassis;
 //tesing variables
 extern lemlib::Chassis chassis;
 extern pros::Controller main_controller;
-void runOdomCalibration();
 // foward declarations for tests
 double expo_joystick_foward(double, double);
 double custom_clamp(double, double, double);

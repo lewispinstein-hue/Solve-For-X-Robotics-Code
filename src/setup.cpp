@@ -27,17 +27,17 @@ pros::adi::Pneumatics funnel_pneumatic_left('G', funnel_engaged);
 constexpr float TRACK_WIDTH = 10.25;
 
 pros::Imu imu(16); // the slot for our imu
-pros::Rotation horizontal1(6);
+pros::Rotation horizontal1(15);
 // tracking wheels are the built in IME's in the motors
 lemlib::TrackingWheel leftVerticalTrackingWheel(&left_motors_drivetrain,
                                                 lemlib::Omniwheel::NEW_325,
-                                                (TRACK_WIDTH / 2), 540);
+                                                (-TRACK_WIDTH / 2), 540);
 
 lemlib::TrackingWheel rightVerticalTrackingWheel(&right_motors_drivetrain,
                                                  lemlib::Omniwheel::NEW_325,
-                                                 ((-TRACK_WIDTH) / 2), 540);
-
-lemlib::TrackingWheel horizontalTrackingWheel(&horizontal1, lemlib::Omniwheel::NEW_2, -1);
+                                                 (TRACK_WIDTH / 2), 540);
+//external sensor for tracking horizontal movement
+lemlib::TrackingWheel horizontalTrackingWheel(&horizontal1, lemlib::Omniwheel::NEW_2, 0.5);
 // sensor init with the sensors we created above
 
 lemlib::OdomSensors
@@ -98,54 +98,4 @@ void clearScreen() {
   pros::screen::erase_rect(0, 0, 480, 272);
   pros::screen::fill_rect(0, 0, 480, 272);
   pros::screen::erase();
-}
-
-// ---------- CONFIGURE THESE ----------
-static const float ACTUAL_FORWARD_DISTANCE = 150.0; // inches
-static const float ACTUAL_ROTATION_DEGREES = 360.0; // degrees
-// -------------------------------------
-
-void runOdomCalibration() {
-    pros::lcd::initialize();
-    pros::lcd::print(0, "ODOM CALIBRATION");
-
-    // STEP 1: Reset pose
-    chassis.setPose(0,0,0);
-    pros::delay(300);
-
-    pros::lcd::print(1, "Press A to drive forward...");
-    // wait for button
-    while(!main_controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_A)) {
-        pros::delay(20);
-    }
-    pros::lcd::print(2, "Driving forward...");
-    
-    // Drive forward to ACTUAL_FORWARD_DISTANCE
-    chassis.moveToPose(ACTUAL_FORWARD_DISTANCE, 0, 0, 5000, {.forwards = true});
-    pros::delay(500);
-
-    float measuredY = chassis.getPose().y;
-    pros::lcd::print(3, "MeasuredY: %.2f", measuredY);
-
-    float forwardScale = ACTUAL_FORWARD_DISTANCE / measuredY;
-    pros::lcd::print(4, "Y scale: %.4f", forwardScale);
-
-    // STEP 2: Rotate test
-    pros::lcd::print(5, "Press A to rotate...");
-    while(!main_controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_A)) {
-        pros::delay(20);
-    }
-
-    pros::lcd::print(6, "Rotating 360...");
-    chassis.turnToHeading(ACTUAL_ROTATION_DEGREES, 2000);
-    pros::delay(400);
-
-    // We'll pull heading from the chassis pose
-    float measuredHeading = chassis.getPose().theta;
-    pros::lcd::print(7, "MeasuredDeg: %.2f", measuredHeading);
-
-    float trackWidthScale = ACTUAL_ROTATION_DEGREES / measuredHeading;
-    pros::lcd::print(8, "TrackWidth scale: %.4f", trackWidthScale);
-
-    pros::lcd::print(9, "Done.");
 }

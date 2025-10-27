@@ -65,7 +65,6 @@ extern "C" {
 #endif
 void clearScreen();
 int testExpoJoystick(int);
-void autonomous(void);
 void initialize(void);
 void disabled(void);
 void competition_initialize(void);

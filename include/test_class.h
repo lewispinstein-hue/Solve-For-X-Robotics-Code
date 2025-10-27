@@ -107,3 +107,5 @@ void testPhysicals();
 void handleSetupSelections();
 //the vector that handles what tests to run
 extern std::vector<bool> testsToRun;
+//the function that handles calibrating lemlib constants
+void runOdomCalibration();
