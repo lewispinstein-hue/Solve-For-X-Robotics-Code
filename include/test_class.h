@@ -1,3 +1,5 @@
+#pragma once
+
 #include "main.h"
 #include <cmath>
 #include <string>
@@ -48,7 +50,7 @@ public:
         }
       } else if (printResults) {
         printToBrain(smallText, 25, (i * 20) + 20,
-                     "Test %d Failed. Expected: %.2f, got %.2f", i, 
+                     "Test %d Failed. Expected: %.2f, got %.2f", i,
                      expectedOutputs[i], result);
       }
     }
@@ -99,3 +101,5 @@ public:
     return tests_passed;
   }
 };
+
+void handleSoftwareTests();

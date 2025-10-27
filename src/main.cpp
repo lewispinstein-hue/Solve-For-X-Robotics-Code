@@ -2,160 +2,7 @@
 #include "lemlib/chassis/chassis.hpp"
 #include "pros/screen.hpp"
 
-// my helper files
-#include "conveyor_handle.h"
-#include "test_class.h"
-#include "users_class.h"
-
-// defines for controller buttons for readability
-#define CONTROLLER_UP pros::E_CONTROLLER_DIGITAL_UP
-#define CONTROLLER_DOWN pros::E_CONTROLLER_DIGITAL_DOWN
-
-// more reader friendly print command
-#define printToBrain pros::screen::print
-#define smallText pros::E_TEXT_SMALL
-
-// define joysticks
-#define CONTROLLER_LEFT_Y pros::E_CONTROLLER_ANALOG_LEFT_Y
-#define CONTROLLER_RIGHT_X pros::E_CONTROLLER_ANALOG_RIGHT_X
-#define CONTROLLER_RIGHT_Y pros::E_CONTROLLER_ANALOG_RIGHT_Y
-
-// init drivetrain motor groups and controller.
-// sets motor to blue gear cartridge, inits ports, and starts tracking the
-// encoding for the motors in degrees
-pros::MotorGroup left_motors_drivetrain({-6, 13, -14},
-                                        pros::v5::MotorGears::rpm_600,
-                                        pros::v5::MotorUnits::degrees);
-pros::MotorGroup right_motors_drivetrain({8, 18, -20},
-                                         pros::v5::MotorGears::rpm_600,
-                                         pros::v5::MotorUnits::degrees);
-pros::Controller main_controller(pros::E_CONTROLLER_MASTER);
-
-// pneumatics
-bool funnel_engaged = false;
-pros::adi::Pneumatics funnel_pneumatic_right('H', funnel_engaged);
-pros::adi::Pneumatics funnel_pneumatic_left('G', funnel_engaged);
-
-// Lemlib initialization
-
-// the length of our robot from furthest wheel to closest wheel on the same side
-constexpr float TRACK_WIDTH = 11.5;
-
-pros::Imu imu(16); // the slot for our imu
-
-// tracking wheels are the built in IME's in the motors
-lemlib::TrackingWheel leftVerticalTrackingWheel(&left_motors_drivetrain,
-                                                lemlib::Omniwheel::NEW_325,
-                                                (TRACK_WIDTH / 2), 540);
-
-lemlib::TrackingWheel rightVerticalTrackingWheel(&right_motors_drivetrain,
-                                                 lemlib::Omniwheel::NEW_325,
-                                                 ((-TRACK_WIDTH) / 2), 540);
-
-// sensor init with the sensors we created above
-lemlib::OdomSensors
-    odomSensors(&leftVerticalTrackingWheel,  // vertical1
-                &rightVerticalTrackingWheel, // vertical2
-                nullptr, // horizontal1 (no horizontal tracking wheel)
-                nullptr, // horizontal2
-                &imu     // IMU
-    );
-
-// settings lemlib uses (need to be tweaked)
-lemlib::ControllerSettings lateralSettings(6, 0, 10, // kP, kI, kD
-                                           0,      // integral anti-windup range
-                                           1, 100, // small error range, timeout
-                                           3, 500, // large error range, timeout
-                                           0       // max acceleration (slew)
-);
-
-lemlib::ControllerSettings angularSettings(4, 0, 10, 0, 1, 100, 3, 500, 0);
-
-// creating drivedrain object te be used in chassis
-lemlib::Drivetrain main_drivetrain(
-    &left_motors_drivetrain,  // left motor group
-    &right_motors_drivetrain, // right motor group
-    TRACK_WIDTH, // track width in inches (measure center-to-center of wheels)
-    lemlib::Omniwheel::NEW_325, // 3.25" omni wheels
-    400, // wheel RPM (green cartridge = 200, blue = 600, red = 100)
-    2    // chase power (leave as 2 unless tuning)
-);
-
-// creating chassis for odometry and PID
-lemlib::Chassis chassis(main_drivetrain, lateralSettings, angularSettings,
-                        odomSensors);
-
-// foward declaration for tests
-double expo_joystick_foward(double, double);
-double custom_clamp(double, double, double);
-double handleArcadeControl(double &, double &, double);
-/**
- * Runs initialization code. This occurs as soon as the program is started.
- *
- * All other competition modes are blocked by initialize; it is recommended
- * to keep execution time for this mode under a few seconds.
- */
-
-void clearScreen() {
-  // just trying everything to clear the screen.
-  pros::screen::erase_rect(0, 0, 480, 272);
-  pros::screen::fill_rect(0, 0, 480, 272);
-  pros::screen::erase();
-}
-
-void handleTests() {
-  // for floating point inacuracies
-  constexpr double TOLERANCE = 0.05;
-  // tracks the return value of runTestsArgs()
-  int tests_passed;
-  // Initialize Test objects
-
-  // test for expo_joystick_foward
-  Test testExpoJoystick({1, 64, 63, 127}, {1, 1.2, 3.1, 2}, {},
-                        {1.0, 55.8, 14.5, 127.0}, "Expo Joystck",
-                        expo_joystick_foward, TOLERANCE);
-  tests_passed += testExpoJoystick.runTestsArgs2(500, true);
-  // tesing custom clamp
-  Test customClampTest({305, -102, 491, -230}, {200, -400, 506, -215},
-                       {400, -200, 609, -102}, {305, -200, 506, -215},
-                       "Custom Clamp", custom_clamp, TOLERANCE);
-  tests_passed += customClampTest.runTestsArgs3(500, true);
-
-  std::vector<double> leftYArcade = {127, -127, 127, 0, 0, 20, 50, 35};
-  std::vector<double> rightXArcade = {0, 0, 127, 127, -127, 0, 50, 80};
-  std::vector<double> testingScaleFactor(rightXArcade.size(), 2);
-  std::vector<double> expectedOutArcade = {254, -254, 191, 0, 0, 20, 100, 65};
-
-  Test testArcadeControl(leftYArcade, rightXArcade, testingScaleFactor,
-                         expectedOutArcade, "Arcade Control",
-                         handleArcadeControl, TOLERANCE);
-  tests_passed += testArcadeControl.runTestsArgs3(500, true);
-
-  // print summary
-  clearScreen(); // clear screen
-  printToBrain(smallText, 25, 0.0, "Summary: ");
-  printToBrain(smallText, 25, 20, "Tests run: 3");
-  printToBrain(smallText, 25, 40, "Tests passed: %d/16", tests_passed);
-  printToBrain(smallText, 25, 60,
-               "Would you like to run tests again? (A = y/X = n)");
-
-  while (true) {
-    if (main_controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_A)) {
-      clearScreen();
-      printToBrain(smallText, 25, 40, "Running Tests again...");
-      pros::delay(300);
-      testExpoJoystick.runTestsArgs2(3000, true);
-      customClampTest.runTestsArgs3(3000, true);
-      testArcadeControl.runTestsArgs3(3000, true);
-      return;
-    } else if (main_controller.get_digital_new_press(
-                   pros::E_CONTROLLER_DIGITAL_X)) {
-      clearScreen();
-      printToBrain(smallText, 25, 40, "Continuing program...");
-      return;
-    }
-  }
-}
+#include "setup.h"
 
 void initialize() {
   // calibrate lemlib stuff
@@ -167,28 +14,18 @@ void initialize() {
   upper_transit_motor.set_brake_mode(pros::MotorBrake::brake);
   intake_transit_motor.set_brake_mode(pros::MotorBrake::brake);
   // handle tests
-  //   handleTests();
-  //   clearScreen();
+  handleSetupSelections();
+
+  if (testsToRun[0] == true) {
+    clearScreen();
+    handleSoftwareTests();
+    clearScreen();
+  }
+  if (testsToRun[1] == true) {
+    clearScreen();
+    testPhysicals();
+  }
 }
-
-// visit users_class.h for User setup explanation
-Users eli("Eli     ", 25, 40, 1.8, 1.6, 3, Users::ControlType::Arcade,
-          pros::E_CONTROLLER_DIGITAL_R2, pros::E_CONTROLLER_DIGITAL_R1,
-          pros::E_CONTROLLER_DIGITAL_L2, pros::E_CONTROLLER_DIGITAL_B);
-
-Users lewis("Lewis", 25, 40, 1.9, 1.4, 3, Users::ControlType::Arcade,
-            pros::E_CONTROLLER_DIGITAL_R2, pros::E_CONTROLLER_DIGITAL_R1,
-            pros::E_CONTROLLER_DIGITAL_UP, pros::E_CONTROLLER_DIGITAL_B);
-
-Users ian("Ian", 20, 30, 2.1, 1.5, 3, Users::ControlType::Arcade,
-          pros::E_CONTROLLER_DIGITAL_R2, pros::E_CONTROLLER_DIGITAL_R1,
-          pros::E_CONTROLLER_DIGITAL_L2, pros::E_CONTROLLER_DIGITAL_A);
-
-Users sanjith("Sanjith", 25, 40, 2.1, 1.5, 3, Users::ControlType::Arcade,
-              pros::E_CONTROLLER_DIGITAL_R1, pros::E_CONTROLLER_DIGITAL_R2,
-              pros::E_CONTROLLER_DIGITAL_L1, pros::E_CONTROLLER_DIGITAL_B);
-
-Users *Users::currentUser = &sanjith; // globally initialize default user
 
 /**
  * Runs while the robot is in the disabled state of Field Management System or
@@ -196,8 +33,8 @@ Users *Users::currentUser = &sanjith; // globally initialize default user
  * the robot is enabled, this task will exit.
  */
 void disabled() {
-  // current_ball_conveyor_state = STOPPED;
-  // funnel_engaged = false;
+  current_ball_conveyor_state = STOPPED;
+  funnel_engaged = false;
 }
 
 /**
@@ -209,7 +46,7 @@ void disabled() {
  * This task will exit when the robot is enabled and autonomous or opcontrol
  * starts.
  */
-void competition_initialize(){};
+void competition_initialize() {}
 
 // function to update conveyor motors based on enum states
 
@@ -343,11 +180,11 @@ double EXPONENT_TURN = 3;
 int track_user = 1;
 constexpr auto sizeOfUsers = 4;
 void setActiveUser() {
-      // make sure that the Users::currentUser contains a valid pointer
-    if (Users::currentUser == nullptr) {
-      // set the user to something usable
-      Users::currentUser = &eli;
-    }
+  // make sure that the Users::currentUser contains a valid pointer
+  if (Users::currentUser == nullptr) {
+    // set the user to something usable
+    Users::currentUser = &eli;
+  }
 
   // check to see if we are trying to change the user
   if (main_controller.get_digital_new_press(CONTROLLER_UP) &&
@@ -575,14 +412,14 @@ void printDebug(double LEFT_Y_AXIS, double RIGHT_X_AXIS, float left_motor_v,
  * it from where it left off.
  */
 
-std::tuple startingSideValue = {1, -1};
-std::string startingSide = "RED";
 void autonomous() {
+  std::tuple startingSideValue = {1, -1};
+  std::string startingSide = "RED";
 
   // IMPORTANT
   // we need to create a system that can take in the starting side, and give the
   // correct path and outputs for auton mode
-  int SS = 1; //default value
+  int SS = 1; // default value
   if (startingSide == "BLUE") {
     int SS = std::get<0>(startingSideValue);
   } else {
@@ -593,13 +430,13 @@ void autonomous() {
   chassis.setPose(0, 0, 0);
   // start auton period
   chassis.moveToPoint(0, 35, 3000);
-  chassis.turnToHeading(SS*90, 1000);
+  chassis.turnToHeading(SS * 90, 1000);
   // move fowards and turn towards the gates
 
   // drive towards the gates
   chassis.moveToPoint(20, 35, 3000);
   // turn to face the loader
-  chassis.turnToHeading(SS*180, 1000);
+  chassis.turnToHeading(SS * 180, 1000);
   // extend pneumatics to prepair for intaking
   funnel_pneumatic_left.extend();
   funnel_pneumatic_right.extend();
