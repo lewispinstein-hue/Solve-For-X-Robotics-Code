@@ -1,5 +1,4 @@
 #include "setup.h"
-#include <vector>
 
 // init drivetrain motor groups and controller.
 // sets motor to blue gear cartridge, inits ports, and starts tracking the

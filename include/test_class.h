@@ -1,9 +1,6 @@
 #pragma once
 
 #include "setup.h"
-#include <cmath>
-#include <string>
-#include <vector>
 
 #define printToBrain pros::screen::print
 #define smallText pros::E_TEXT_SMALL

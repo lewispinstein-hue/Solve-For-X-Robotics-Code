@@ -1,7 +1,7 @@
 // this is the file for running tests. Add tests here
 #include "setup.h"
 
-//software tests - internal
+// software tests - internal
 void handleSoftwareTests() {
   // for floating point inacuracies
   constexpr double TOLERANCE = 0.05;
@@ -57,7 +57,7 @@ void handleSoftwareTests() {
   }
 }
 
-//hardware tests - external
+// hardware tests - external
 void testPhysicals() {
   clearScreen();
   printToBrain(smallText, 25, 20, "Running Physical Tests...       ");
@@ -113,6 +113,7 @@ void handleSetupSelections() {
     }
     pros::delay(20); // prevent unneed strain on CPU
   }
+  // after asking for software tests, we move to asking for hardware tests
   while (true) {
     printToBrain(smallText, 25, 40, "Would you like to run Physical tests?");
     if (main_controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_A)) {
