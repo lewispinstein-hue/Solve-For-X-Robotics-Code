@@ -71,5 +71,3 @@ More rubber bands to secure the motors.
 Better descorer
 
 Add a pneumatic that can stop balls from comming out of the top goal so we do not have to worry about accidently dropping balls
-
-sawasdawddasasdawawda0sdawda-sd-a-wd-q2-1-gh-ehdk-aswdasddasvcawdaddawdsdaasdaccsdawdt-cLbv6arIa5wdasK0PSS8RHDPasdawdasdwjLTbPriC50cy3asdaqvTh36moEmtasdawhLKYONmXVUuawddasdSi7IBM3tpeWxulISZY8T3BlbkFJjQn8asdavdjCqyGYB3pL3awdawddasdR-PRt2zNgEv07Q6eSawdaYptb8C2nk1dhZHeaaOP5Z8whq1wdasd-awd-as-da-wd-adbMu25fJ26zfnQAawd

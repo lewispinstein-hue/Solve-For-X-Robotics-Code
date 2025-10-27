@@ -104,11 +104,13 @@ void handleSetupSelections() {
     if (main_controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_A)) {
       printToBrain(smallText, 25, 40, "Selected: TRUE");
       testsToRun[0] = true;
+      pros::delay(300);
       break;
     } else if (main_controller.get_digital_new_press(
                    pros::E_CONTROLLER_DIGITAL_X)) {
       printToBrain(smallText, 25, 40, "Selected: FALSE");
       testsToRun[0] = false;
+      pros::delay(150);
       break;
     }
     pros::delay(20); // prevent unneed strain on CPU
@@ -119,11 +121,13 @@ void handleSetupSelections() {
     if (main_controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_A)) {
       printToBrain(smallText, 25, 40, "Selected: TRUE");
       testsToRun[1] = true;
+      pros::delay(300);
       break;
     } else if (main_controller.get_digital_new_press(
                    pros::E_CONTROLLER_DIGITAL_X)) {
       printToBrain(smallText, 25, 40, "Selected: FALSE");
       testsToRun[1] = false;
+      pros::delay(150);
       break;
     }
     pros::delay(20); // prevent unneed strain on CPU
