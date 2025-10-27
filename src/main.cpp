@@ -22,6 +22,7 @@ void initialize() {
     clearScreen();
     testPhysicals();
   }
+  runOdomCalibration();
 }
 
 /**
@@ -380,9 +381,9 @@ void autonomous() {
   // correct path and outputs for auton mode
   int SS = 1; // default value
   if (startingSide == "BLUE") {
-    int SS = std::get<0>(startingSideValue);
+   SS = std::get<0>(startingSideValue);
   } else {
-    int SS = std::get<1>(startingSideValue);
+   SS = std::get<1>(startingSideValue);
   }
   // make sure we set the default position
   chassis.calibrate();

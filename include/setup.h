@@ -44,7 +44,10 @@ extern lemlib::ControllerSettings angularSettings;
 // drivetrain and chassis
 extern lemlib::Drivetrain main_drivetrain;
 extern lemlib::Chassis chassis;
-
+//tesing variables
+extern lemlib::Chassis chassis;
+extern pros::Controller main_controller;
+void runOdomCalibration();
 // foward declarations for tests
 double expo_joystick_foward(double, double);
 double custom_clamp(double, double, double);
