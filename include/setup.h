@@ -1,11 +1,10 @@
 #pragma once
 
 // headers for setup
-#include "lemlib/chassis/chassis.hpp"
-#include "users_class.h"
-#include "test_class.h"
 #include "conveyor_handle.h"
-
+#include "lemlib/chassis/chassis.hpp"
+#include "test_class.h"
+#include "users_class.h"
 
 // defines for controller buttons for readability
 #define CONTROLLER_UP pros::E_CONTROLLER_DIGITAL_UP
@@ -33,29 +32,29 @@ extern pros::adi::Pneumatics funnel_pneumatic_left;
 // lemlib construcion
 extern const float TRACK_WIDTH;
 extern pros::Imu imu;
-//IME's in motors
+// IME's in motors
 extern lemlib::TrackingWheel leftVerticalTrackingWheel;
 extern lemlib::TrackingWheel rightVerticalTrackingWheel;
-//odom sensors
+// odom sensors
 extern lemlib::OdomSensors odomSensors;
-//settings for lemlib
+// settings for lemlib
 extern lemlib::ControllerSettings lateralSettings;
 extern lemlib::ControllerSettings angularSettings;
-//drivetrain and chassis
+// drivetrain and chassis
 extern lemlib::Drivetrain main_drivetrain;
 extern lemlib::Chassis chassis;
 
-//foward declarations for tests
+// foward declarations for tests
 double expo_joystick_foward(double, double);
 double custom_clamp(double, double, double);
 double handleArcadeControl(double &, double &, double);
-//foward declarations for other
+// foward declarations for other
 void clearScreen();
 void handleSetupSelections();
 void testPhysicals();
 extern std::vector<bool> testsToRun;
 
-//users people
+// users people
 extern Users lewis;
 extern Users eli;
 extern Users sanjith;

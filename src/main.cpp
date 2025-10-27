@@ -1,7 +1,4 @@
 #include "main.h"
-#include "lemlib/chassis/chassis.hpp"
-#include "pros/screen.hpp"
-
 #include "setup.h"
 
 void initialize() {

@@ -45,11 +45,15 @@ protected:
   double EXPONENT_FOWARDS;
   double EXPONENT_TURN;
   ControlType control_type;
-  //keybinds with default values
-  controller_digital_e_t sf_high_goal = E_CONTROLLER_DIGITAL_R1;   /// button for high goal conveyor
-  controller_digital_e_t sf_medium_goal = E_CONTROLLER_DIGITAL_R2; /// button for low goal conveyor
-  controller_digital_e_t sf_low_goal = E_CONTROLLER_DIGITAL_L1;    //!< button for bottom goal conveyor
-  controller_digital_e_t pn_button = E_CONTROLLER_DIGITAL_B;      //!< button for pneumatic toggle
+  // keybinds with default values
+  controller_digital_e_t sf_high_goal =
+      E_CONTROLLER_DIGITAL_R1; /// button for high goal conveyor
+  controller_digital_e_t sf_medium_goal =
+      E_CONTROLLER_DIGITAL_R2; /// button for low goal conveyor
+  controller_digital_e_t sf_low_goal =
+      E_CONTROLLER_DIGITAL_L1; //!< button for bottom goal conveyor
+  controller_digital_e_t pn_button =
+      E_CONTROLLER_DIGITAL_B; //!< button for pneumatic toggle
 
 public:
   /**

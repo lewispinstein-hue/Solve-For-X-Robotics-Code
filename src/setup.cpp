@@ -104,7 +104,7 @@ void handleSetupSelections() {
     if (main_controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_A)) {
       printToBrain(smallText, 25, 40, "Selected: TRUE");
       testsToRun[0] = true;
-      break;\
+      break;
     } else if (main_controller.get_digital_new_press(
                    pros::E_CONTROLLER_DIGITAL_X)) {
       printToBrain(smallText, 25, 40, "Selected: FALSE");

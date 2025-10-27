@@ -2,7 +2,7 @@
 
 #include "main.h"
 
-//create enum for changing the motor states
+// create enum for changing the motor states
 enum ball_conveyor_state {
   UPPER_GOAL,  // intake balls || spin both up
   MIDDLE_GOAL, // outtake balls || spin INTAKE_TRANSIST up, UPPER_TRANSIT down
