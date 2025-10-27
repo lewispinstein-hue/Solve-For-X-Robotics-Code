@@ -1,6 +1,7 @@
 #include "main.h"
 #include <string>
 
+using namespace pros;
 /**
 * @class Users
 * @brief class for organizing users
@@ -44,10 +45,11 @@ protected:
   double EXPONENT_FOWARDS;
   double EXPONENT_TURN;
   ControlType control_type;
-  pros::controller_digital_e_t sf_high_goal;   /// button for high goal conveyor
-  pros::controller_digital_e_t sf_medium_goal; /// button for low goal conveyor
-  pros::controller_digital_e_t sf_low_goal; //!< button for bottom goal conveyor
-  pros::controller_digital_e_t pn_button;   //!< button for pneumatic toggle
+  //keybinds with default values
+  controller_digital_e_t sf_high_goal = E_CONTROLLER_DIGITAL_R1;   /// button for high goal conveyor
+  controller_digital_e_t sf_medium_goal = E_CONTROLLER_DIGITAL_R2; /// button for low goal conveyor
+  controller_digital_e_t sf_low_goal = E_CONTROLLER_DIGITAL_L1;    //!< button for bottom goal conveyor
+  controller_digital_e_t pn_button = E_CONTROLLER_DIGITAL_B;      //!< button for pneumatic toggle
 
 public:
   /**
@@ -68,10 +70,10 @@ public:
   // constructor
   Users(std::string name, int slew_max, int slew_min, double exponent_fw,
         double exponent_turn, double scale_factor, ControlType control,
-        pros::controller_digital_e_t sf_high_goal,
-        pros::controller_digital_e_t sf_medium_goal,
-        pros::controller_digital_e_t sf_low_goal,
-        pros::controller_digital_e_t pn_button)
+        pros::controller_digital_e_t sf_high_goal = E_CONTROLLER_DIGITAL_R1,
+        pros::controller_digital_e_t sf_medium_goal = E_CONTROLLER_DIGITAL_R2,
+        pros::controller_digital_e_t sf_low_goal = E_CONTROLLER_DIGITAL_L1,
+        pros::controller_digital_e_t pn_button = E_CONTROLLER_DIGITAL_B)
       : name(name), SLEW_MAX(slew_max), SLEW_MIN(slew_min),
         SCALE_FACTOR(scale_factor), EXPONENT_FOWARDS(exponent_fw),
         EXPONENT_TURN(exponent_turn), control_type(control),

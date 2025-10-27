@@ -636,7 +636,7 @@
     },
     "upload_options": {
       "after": "run",
-      "slot": 2
+      "slot": 1
     },
     "use_early_access": false
   }
