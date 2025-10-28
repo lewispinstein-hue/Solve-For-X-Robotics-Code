@@ -1,6 +1,5 @@
 #pragma once
 
-#include "main.h"
 #include "setup.h"
 
 //foward declarations for auton routes

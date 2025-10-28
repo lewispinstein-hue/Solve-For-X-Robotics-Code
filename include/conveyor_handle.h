@@ -1,6 +1,6 @@
 #pragma once
 
-#include "main.h"
+#include "setup.h"
 
 // create enum for changing the motor states
 enum ball_conveyor_state {

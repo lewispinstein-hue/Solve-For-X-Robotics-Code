@@ -1,9 +1,27 @@
-#include "main.h"
 #include "setup.h"
 
+struct WaitEvent {
+    double x;              // X position to trigger
+    double y;              // Y position (optional)
+    int waitTimeMs;        // how long to wait
+    bool triggered = false;
+};
+
+std::vector<WaitEvent> waits = {
+  //event for 
+    {-66.0, 46.0, 1000},
+    {36.0, 0.0, 500}
+};
+
 // PROVIDED BY https://path.jerryio.com
-//
+
+ASSET(jerryio_path1_txt); 
+//path for starting on left side of red parking spot
+
 void autonomousRoute1() {
+  chassis.setPose(-65.842, 13.889, 100);
+  chassis.follow(jerryio_path1_txt,9, 10000, true, true); // async
+
   std::tuple startingSideValue = {1, -1};
   std::string startingSide = "RED";
 

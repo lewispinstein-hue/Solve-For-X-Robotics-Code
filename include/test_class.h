@@ -98,14 +98,14 @@ public:
     return tests_passed;
   }
 };
-//foward declarations for tests
-//software tests - located in "tests.cpp"
+// foward declarations for tests
+// software tests - located in "tests.cpp"
 void handleSoftwareTests();
-//physical tests - located in "tests.cpp"
+// physical tests - located in "tests.cpp"
 void testPhysicals();
-//handling what tests to run - located in "tests.cpp"
+// handling what tests to run - located in "tests.cpp"
 void handleSetupSelections();
-//the vector that handles what tests to run
+// the vector that handles what tests to run
 extern std::vector<bool> testsToRun;
-//the function that handles calibrating lemlib constants
+// the function that handles calibrating lemlib constants
 void runOdomCalibration();
