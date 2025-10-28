@@ -27,6 +27,7 @@ pros::adi::Pneumatics funnel_pneumatic_left('G', funnel_engaged);
 constexpr float TRACK_WIDTH = 10.25;
 
 pros::Imu imu(16); // the slot for our imu
+//slot for horizontal1 tracking wheel
 pros::Rotation horizontal1(15);
 // tracking wheels are the built in IME's in the motors
 lemlib::TrackingWheel leftVerticalTrackingWheel(&left_motors_drivetrain,

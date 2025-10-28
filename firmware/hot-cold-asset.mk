@@ -9,11 +9,14 @@ TEMPLATE_FILES+=$(wildcard static/*) $(wildcard firmware/hot-cold-asset.mk)
 
 ASSET_OBJ=$(addprefix $(BINDIR)/, $(addsuffix .o, $(ASSET_FILES)) )
 
-GETALLOBJ=$(sort $(call ASMOBJ,$1) $(call COBJ,$1) $(call CXXOBJ,$1)) $(ASSET_OBJ)
+ELF_DEPS+=$(ASSET_OBJ)
 
 .SECONDEXPANSION:
-$(ASSET_OBJ): $$(patsubst bin/%,%,$$(basename $$@))
-	$(VV)mkdir -p $(BINDIR)/static
-	$(VV)mkdir -p $(BINDIR)/static.lib
-	@echo "ASSET $@"
-	$(VV)$(OBJCOPY) -I binary -O elf32-littlearm -B arm $^ $@
+define asset_rule
+$$(BINDIR)/$(1).o: $(1)
+	$(VV)mkdir -p $$(dir $$@)
+	@echo "ASSET $$@"
+	$(VV)$$(OBJCOPY) -I binary -O elf32-littlearm -B arm $$^ $$@
+endef
+
+$(foreach asset_file,$(ASSET_FILES),$(eval $(call asset_rule,$(asset_file))))
