@@ -1,34 +1,68 @@
 #include "setup.h"
 
 struct WaitEvent {
-    double x;              // X position to trigger
-    double y;              // Y position (optional)
-    int waitTimeMs;        // how long to wait
-    bool triggered = false;
+  double x;               // X position to trigger
+  double y;               // Y position (optional)
+  int waitTimeMs;         // how long to wait
+  bool triggered = false; // triggered when the robot is at the event
 };
 
 std::vector<WaitEvent> waits = {
-  //event for 
+    // point for extending pneumatics
+    {-40, 46, 200},
+    // event for inside of the loader
     {-66.0, 46.0, 1000},
-    {36.0, 0.0, 500}
-};
+    // event for scoring in the high goals
+    {25.0, 46.0, 2000}};
 
 // PROVIDED BY https://path.jerryio.com
-// Note: Asset file is static/jerryio_path1 (no .txt extension for symbol compatibility)
+// Note: Asset file is static/jerryio_path1 (no .txt extension for symbol
+// compatibility)
 
-ASSET(jerryio_path1); 
-//path for starting on left side of red parking spot
+ASSET(jerryio_path1_tarball);
+// path for starting on left side of red parking spot
 
+bool checkForEvents(int eventIndex) {
+  const double tolerance = 0.1;
+  // if the robot is within the tolerance of the event, set the event to
+  // triggered and return true
+  if (fabs(chassis.getPose().x - waits[eventIndex].x) < tolerance &&
+      fabs(chassis.getPose().y - waits[eventIndex].y) < tolerance) {
+    waits[eventIndex].triggered = true;
+    return true;
+  }
+  // if the robot is not within the tolerance of the event, return false
+  return false;
+}
 void autonomousRoute1() {
+  // set pose to the starting position
   chassis.setPose(-65.842, 13.889, 100);
-  chassis.follow(jerryio_path1,9, 10000, true, true); // async
+  chassis.follow(jerryio_path1_tarball, 9, 10000, true, true); // async
 
+  while (chassis.isInMotion()) {
+    if (checkForEvents(0)) {
+      // the condition is met, so we need to extend the pneumatics
+      funnel_pneumatic_left.extend();
+      funnel_pneumatic_right.extend();
+    }
+    if (checkForEvents(1)) {
+      // the condition for inside the loader is met
+      // run agitation code here
+    }
+    if (checkForEvents(2)) {
+      // the condition for scoring in the high goals is met
+      // run scoring code here
+    }
+  }
+
+  // outdated code.
+  // keep it here for reference so we have a reference point for the new code
   std::tuple startingSideValue = {1, -1};
   std::string startingSide = "RED";
 
   // IMPORTANT
-  // we need to create a system that can take in the starting side, and give the
-  // correct path and outputs for auton mode
+  // we need to create a system that can take in the starting side, and give
+  // the correct path and outputs for auton mode
   int SS = 1; // default value
   if (startingSide == "BLUE") {
     SS = std::get<0>(startingSideValue);
@@ -90,36 +124,3 @@ void autonomousRoute1() {
   }
   // get the posistion of the motors to ensure that they are moving correctly
 }
-
-
-/*
-for you gpt:
-I want to know why this is not compiling
-the error is:
-David@MacBook-Air-5 Solve For X Robotics Code % pros make all
-Cleaning project
-Creating cold package with LemLib,libc,liblvgl,libm,libpros [OK]
-Stripping cold package  [DONE]
-Section sizes:
-   text    data     bss   total     hex filename
-2316309    6542 60017181        62340032        3b73bc0 bin/cold.package.elf
-Compiled src/auton.cpp [OK]
-Compiled src/conveyor_handle.cpp [OK]
-Compiled src/main.cpp [OK]
-Compiled src/setup.cpp [OK]
-Compiled src/tests.cpp [OK]
-Adding timestamp [OK]
-Linking hot project with ./bin/cold.package.elf and LemLib,libc,liblvgl,libm,libpros [ERRORS]
-/Users/David/Library/Application Support/Code/User/globalStorage/sigbots.pros/install/pros-toolchain-macos/bin/../lib/gcc/arm-none-eabi/13.3.1/../../../../arm-none-eabi/bin/ld: bin/auton.cpp.o:/Users/David/Documents/VEXcode Robot/Solve For X Robotics Code/src/auton.cpp:18:(.data._ZL13jerryio_path1+0x0): undefined reference to `_binary_static_jerryio_path1_start'
-/Users/David/Library/Application Support/Code/User/globalStorage/sigbots.pros/install/pros-toolchain-macos/bin/../lib/gcc/arm-none-eabi/13.3.1/../../../../arm-none-eabi/bin/ld: bin/auton.cpp.o:(.data._ZL13jerryio_path1+0x4): undefined reference to `_binary_static_jerryio_path1_size'
-collect2: error: ld returned 1 exit status
-make: *** [bin/hot.package.elf] Error 1
-ERROR - pros.cli.build:make - Failed to make project: Exit Code 2 - pros-cli version:3.5.6
-PROS-CLI Version:  3.5.6
-PROS-Kernel Version: 4.2.1
-╭─ Error ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ Failed to build                                                                                                                  │
-╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-                                                                                                                                    
-David@MacBook-Air-5 Solve For X Robotics Code % 
-*/
