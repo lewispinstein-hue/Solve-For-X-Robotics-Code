@@ -136,7 +136,7 @@ void handleSetupSelections() {
 }
 
 // ---------- CONFIGURE THESE ----------
-static const float ACTUAL_FORWARD_DISTANCE = 150.0; // inches
+static const float ACTUAL_FORWARD_DISTANCE = 100.0; // inches
 static const float ACTUAL_ROTATION_DEGREES = 360.0; // degrees
 // -------------------------------------
 
@@ -156,7 +156,7 @@ void runOdomCalibration() {
     pros::lcd::print(2, "Driving forward...");
     
     // Drive forward to ACTUAL_FORWARD_DISTANCE
-    chassis.moveToPose(ACTUAL_FORWARD_DISTANCE, 0, 0, 5000, {.forwards = true});
+    chassis.moveToPose(0, ACTUAL_FORWARD_DISTANCE, 0, 5000);
     pros::delay(500);
 
     float measuredY = chassis.getPose().y;

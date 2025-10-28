@@ -10,7 +10,7 @@ void initialize() {
   upper_transit_motor.set_brake_mode(pros::MotorBrake::brake);
   intake_transit_motor.set_brake_mode(pros::MotorBrake::brake);
   // handle tests
-  handleSetupSelections();
+  // handleSetupSelections();
   // run the acording tests
   if (testsToRun[0] == true) {
     clearScreen();
@@ -21,7 +21,7 @@ void initialize() {
     clearScreen();
     testPhysicals();
   }
-  // runOdomCalibration();
+  // runOdomCalibration();  
 }
 
 /**
@@ -88,9 +88,13 @@ void checkControllerButtonPress() {
     chassis.cancelAllMotions();
     main_controller.print(0, 0, "Pose reset to 0,0,0");
   } else if (main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_Y)) {
-    autonomousRoute1();
+    // autonomousRoute1();
+    chassis.setPose(0,0,0);
+    chassis.moveToPoint(0, 20, 2000);
   } else if (main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_X)) {
-    runOdomCalibration();
+    // runOdomCalibration();
+    chassis.setPose(0,0,0);
+    chassis.turnToHeading(180, 1000);
   }
 }
 

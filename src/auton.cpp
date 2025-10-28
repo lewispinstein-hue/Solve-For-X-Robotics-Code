@@ -4,54 +4,62 @@ struct WaitEvent {
   double x;               // X position to trigger
   double y;               // Y position (optional)
   int waitTimeMs;         // how long to wait
+  double tolerance = 0.1; // relative positional error for event to trigger
   bool triggered = false; // triggered when the robot is at the event
 };
 
 std::vector<WaitEvent> waits = {
     // point for extending pneumatics
-    {-40, 46, 200},
+    {-47, 47, 200, 0.2},
     // event for inside of the loader
-    {-66.0, 46.0, 1000},
+    {-67.0, 46.5, 1000, 0.1},
     // event for scoring in the high goals
-    {25.0, 46.0, 2000}};
+    {25.0, 46.0, 2000, 0.2}};
 
 // PROVIDED BY https://path.jerryio.com
 // Note: Asset file is static/jerryio_path1 (no .txt extension for symbol
 // compatibility)
+ASSET(path1_NEW);
+_asset currentPath = path1_NEW;
 
-ASSET(jerryio_path1_tarball);
 // path for starting on left side of red parking spot
 
 bool checkForEvents(int eventIndex) {
-  const double tolerance = 0.1;
   // if the robot is within the tolerance of the event, set the event to
   // triggered and return true
-  if (fabs(chassis.getPose().x - waits[eventIndex].x) < tolerance &&
-      fabs(chassis.getPose().y - waits[eventIndex].y) < tolerance) {
+  if (fabs(chassis.getPose().x - waits[eventIndex].x) <
+          waits[eventIndex].tolerance &&
+      fabs(chassis.getPose().y - waits[eventIndex].y) <
+          waits[eventIndex].tolerance) {
     waits[eventIndex].triggered = true;
     return true;
   }
   // if the robot is not within the tolerance of the event, return false
+  waits[eventIndex].triggered = false;
   return false;
 }
+
 void autonomousRoute1() {
   // set pose to the starting position
   chassis.setPose(-65.842, 13.889, 100);
-  chassis.follow(jerryio_path1_tarball, 9, 10000, true, true); // async
+  chassis.follow(currentPath, 9, 10000, true, true); // async
 
   while (chassis.isInMotion()) {
-    if (checkForEvents(0)) {
-      // the condition is met, so we need to extend the pneumatics
-      funnel_pneumatic_left.extend();
-      funnel_pneumatic_right.extend();
-    }
-    if (checkForEvents(1)) {
-      // the condition for inside the loader is met
-      // run agitation code here
-    }
-    if (checkForEvents(2)) {
-      // the condition for scoring in the high goals is met
-      // run scoring code here
+    //check what path
+    if (currentPath.buf == path1_NEW.buf) {
+      if (checkForEvents(0)) {
+        // the condition is met, so we need to extend the pneumatics
+        funnel_pneumatic_left.extend();
+        funnel_pneumatic_right.extend();
+      }
+      if (checkForEvents(1)) {
+        // the condition for inside the loader is met
+        // run agitation code here
+      }
+      if (checkForEvents(2)) {
+        // the condition for scoring in the high goals is met
+        // run scoring code here
+      }
     }
   }
 
