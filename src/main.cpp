@@ -1,3 +1,4 @@
+#include "auton.h"
 #include "setup.h"
 
 void initialize() {
@@ -21,7 +22,7 @@ void initialize() {
     clearScreen();
     testPhysicals();
   }
-  // runOdomCalibration();  
+  // runOdomCalibration();
 }
 
 /**
@@ -87,13 +88,14 @@ void checkControllerButtonPress() {
     chassis.setPose(0, 0, 0);
     chassis.cancelAllMotions();
     main_controller.print(0, 0, "Pose reset to 0,0,0");
+    autonomousRoute2();
   } else if (main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_Y)) {
     // autonomousRoute1();
-    chassis.setPose(0,0,0);
-    chassis.moveToPoint(0, 20, 2000);
+    chassis.setPose(0, 0, 0);
+    chassis.moveToPoint(20, 20, 2000);
   } else if (main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_X)) {
     // runOdomCalibration();
-    chassis.setPose(0,0,0);
+    chassis.setPose(0, 0, 0);
     chassis.turnToHeading(180, 1000);
   }
 }
@@ -377,7 +379,7 @@ void printDebug(double LEFT_Y_AXIS, double RIGHT_X_AXIS, float left_motor_v,
  */
 
 void opcontrol() {
-  while (true) {
+    while (true) {
     // init variables for joystick values
     double LEFT_Y_AXIS = main_controller.get_analog(CONTROLLER_LEFT_Y);
     double RIGHT_X_AXIS = main_controller.get_analog(CONTROLLER_RIGHT_X);

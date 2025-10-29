@@ -32,11 +32,11 @@ pros::Rotation horizontal1(15);
 // tracking wheels are the built in IME's in the motors
 lemlib::TrackingWheel leftVerticalTrackingWheel(&left_motors_drivetrain,
                                                 lemlib::Omniwheel::NEW_325,
-                                                (-TRACK_WIDTH / 2), 540);
+                                                (-TRACK_WIDTH / 2), 400);
 
 lemlib::TrackingWheel rightVerticalTrackingWheel(&right_motors_drivetrain,
                                                  lemlib::Omniwheel::NEW_325,
-                                                 (TRACK_WIDTH / 2), 540);
+                                                 (TRACK_WIDTH / 2), 400);
 //external sensor for tracking horizontal movement
 lemlib::TrackingWheel horizontalTrackingWheel(&horizontal1, lemlib::Omniwheel::NEW_2, 0.5);
 // sensor init with the sensors we created above
@@ -50,20 +50,20 @@ lemlib::OdomSensors
     );
 
 // settings lemlib uses (need to be tweaked)
-lemlib::ControllerSettings lateralSettings(13, 0.05, 30, // kP, kI, kD
+lemlib::ControllerSettings lateralSettings(12, 0, 40, // kP, kI, kD
                                            0,      // integral anti-windup range
                                            0, 0, // small error range, timeout
-                                           0, 0, // large error range, timeout
+                                             0, 0, // large error range, timeout
                                            0       // max acceleration (slew)
 );
 
-lemlib::ControllerSettings angularSettings(4, 0, 34, 0, 0, 0, 0, 0, 0);
+lemlib::ControllerSettings angularSettings(4, 0, 44, 0, 0, 0, 0, 0, 0);
 
 // creating drivedrain object te be used in chassis
 lemlib::Drivetrain main_drivetrain(
     &left_motors_drivetrain,  // left motor group
     &right_motors_drivetrain, // right motor group
-    10.75, // track width in inches (measure center-to-center of wheels)
+    8.0625, // track width in inches (measure center-to-center of wheels)
     lemlib::Omniwheel::NEW_325, // 3.25" omni wheels
     600, // wheel RPM (green cartridge = 200, blue = 600, red = 100)
     2    // chase power (leave as 2 unless tuning)
@@ -75,9 +75,9 @@ lemlib::Chassis chassis(main_drivetrain, lateralSettings, angularSettings,
 
 // creating each user with their wanted settings
 // visit users_class.h for User setup explanation
-Users eli("Eli     ", 25, 40, 1.8, 1.6, 3, Users::ControlType::Arcade,
-          pros::E_CONTROLLER_DIGITAL_R2, pros::E_CONTROLLER_DIGITAL_R1,
-          pros::E_CONTROLLER_DIGITAL_L2, pros::E_CONTROLLER_DIGITAL_B);
+Users eli("Eli     ", 25, 40, 1.8, 3, 3, Users::ControlType::Arcade,
+          pros::E_CONTROLLER_DIGITAL_R2, pros::E_CONTROLLER_DIGITAL_L2,
+          pros::E_CONTROLLER_DIGITAL_R1, pros::E_CONTROLLER_DIGITAL_B);
 
 Users lewis("Lewis", 25, 40, 1.9, 1.4, 3, Users::ControlType::Arcade,
             pros::E_CONTROLLER_DIGITAL_R2, pros::E_CONTROLLER_DIGITAL_R1,

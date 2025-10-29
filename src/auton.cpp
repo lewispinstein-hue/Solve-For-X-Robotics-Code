@@ -1,3 +1,5 @@
+#include "auton.h"
+#include "conveyor_handle.h"
 #include "setup.h"
 
 struct WaitEvent {
@@ -12,15 +14,14 @@ std::vector<WaitEvent> waits = {
     // point for extending pneumatics
     {-47, 47, 200, 0.2},
     // event for inside of the loader
-    {-67.0, 46.5, 1000, 0.1},
+    {67.8, -47.5, 2000, 0.3},
     // event for scoring in the high goals
     {25.0, 46.0, 2000, 0.2}};
 
 // PROVIDED BY https://path.jerryio.com
 // Note: Asset file is static/jerryio_path1 (no .txt extension for symbol
 // compatibility)
-ASSET(path1_NEW);
-_asset currentPath = path1_NEW;
+// _asset currentPath = path1_NEW;
 
 // path for starting on left side of red parking spot
 
@@ -39,30 +40,37 @@ bool checkForEvents(int eventIndex) {
   return false;
 }
 
-void autonomousRoute1() {
+ASSET(main_test_txt);
+
+void autonomousRoute2() {
   // set pose to the starting position
-  chassis.setPose(-65.842, 13.889, 100);
-  chassis.follow(currentPath, 9, 10000, true, true); // async
+  chassis.setPose(64.479, -13.731, 270);
+
+  // Follow the path with 10 second timeout
+  // The original 1000ms timeout was too short for this path
+  chassis.follow(main_test_txt, 9, 10000, true);
 
   while (chassis.isInMotion()) {
-    //check what path
-    if (currentPath.buf == path1_NEW.buf) {
-      if (checkForEvents(0)) {
-        // the condition is met, so we need to extend the pneumatics
-        funnel_pneumatic_left.extend();
-        funnel_pneumatic_right.extend();
-      }
-      if (checkForEvents(1)) {
-        // the condition for inside the loader is met
-        // run agitation code here
-      }
-      if (checkForEvents(2)) {
-        // the condition for scoring in the high goals is met
-        // run scoring code here
-      }
+    // check what path
+    //  if (currentPath.buf == path1_NEW.buf) {
+    if (checkForEvents(1)) {
+      // the condition is met, so we need to extend the pneumatics
+      updateBallConveyorMotors(OUTTAKE);
+      pros::delay(waits[1].waitTimeMs);
+      updateBallConveyorMotors(STOPPED);
     }
+    // if (checkForEvents(1)) {
+    //   // the condition for inside the loader is met
+    //   // run agitation code here
+    // }
+    // if (checkForEvents(2)) {
+    //   // the condition for scoring in the high goals is met
+    //   // run scoring code here
+    // }
   }
+}
 
+void autonomousRoute1() {
   // outdated code.
   // keep it here for reference so we have a reference point for the new code
   std::tuple startingSideValue = {1, -1};
