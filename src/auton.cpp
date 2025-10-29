@@ -21,76 +21,69 @@ std::vector<WaitEvent> waits = {
 // PROVIDED BY https://path.jerryio.com
 // Note: Asset file is static/jerryio_path1 (no .txt extension for symbol
 // compatibility)
-// _asset currentPath = path1_NEW;
 
-// path for starting on left side of red parking spot
-
+ButtonPressed sideColor;
+ButtonPressed sideSide;
+void selectRoute() {
+  drawBottomButtons();
+  printToBrain(smallText, 25, 20, "Pick path color");
+  ButtonPressed sideColor = waitForBottomButtonTap();
+  printToBrain(smallText, 25, 40, "Pick path side");
+  ButtonPressed sideSide = waitForBottomButtonTap();
+}
 bool checkForEvents(int eventIndex) {
   // if the robot is within the tolerance of the event, set the event to
   // triggered and return true
+
+  // checking the robots position against the wanted position
   if (fabs(chassis.getPose().x - waits[eventIndex].x) <
           waits[eventIndex].tolerance &&
       fabs(chassis.getPose().y - waits[eventIndex].y) <
           waits[eventIndex].tolerance) {
     waits[eventIndex].triggered = true;
-    return true;
   }
   // if the robot is not within the tolerance of the event, return false
-  waits[eventIndex].triggered = false;
-  return false;
+  return waits[eventIndex].triggered;
 }
 
 ASSET(BlueLeftS1_txt); // moves from starting pos to inbetween loader and high
-                       // goal
+// goal
 ASSET(BlueLeftS2_txt); // moves from endpoint of s1 into high goal
 
-void startingLeftBlue() {
-  // set pose to the starting position
-  chassis.setPose(64.479, -13.731, 270);
-  //we move to the inbetween loader and high goal
-  chassis.follow(BlueLeftS1_txt, 11, 7000, true);
-  //then move backwards into the high goal
-  chassis.follow(BlueLeftS2_txt, 15, 5000, false, false);
-  //start moving pre-loaded ball into high goal
-  setConveyorMotors(OUTTAKE);
-  //we wait 2 seconds for ball to score before stopping the conveyor
+// path for starting on left side of red parking spot
+void startingLeft() {
+  chassis.setPose(64, -14, 270);
+  // we move to the inbetween loader and high goal
+  chassis.follow(BlueLeftS1_txt, 4, 7000, true, false);
+  while (chassis.isInMotion()) {
+    pros::delay(30);
+  }
+  // then move backwards into the high goal
+  // chassis.follow(BlueLeftS2_txt, 9, 5000, false, false);
+  // start moving pre-loaded ball into high goal
+  setConveyorMotors(UPPER_GOAL);
+  // we wait 2 seconds for ball to score before stopping the conveyor
   pros::delay(2000);
-  //stopping conveyor motors
+  // stopping conveyor motors
   setConveyorMotors(STOPPED);
-  //we move on to next step
+  // we move on to next step
 }
 
-
-//creating an input field for choosing where the robot is starting
-std::tuple<std::string, std::string> getStartingSide() {
-  const std::string startingColor = "BLUE";
-  const std::string startingSide = "LEFT";
-  return std::make_tuple(startingColor, startingSide);
+void startingRight() {
+  // params
 }
 
 // function to get calling during comp
 void autonomous() {
-  // case for starting on left side of blue
-  if (std::get<0>(getStartingSide()) == "BLUE" &&
-      std::get<1>(getStartingSide()) == "LEFT") {
-    startingLeftBlue();
-  }
-  // case for starting on right side of blue
-  else if (std::get<0>(getStartingSide()) == "BLUE" &&
-           std::get<1>(getStartingSide()) == "RIGHT") {
-    startingRightBlue();
-  }
-  // case for starting on left side of red
-  else if (std::get<0>(getStartingSide()) == "RED" &&
-           std::get<1>(getStartingSide()) == "LEFT") {
-    startingLeftRed();
-  }
-  // case for starting on right side of red
-  else if (std::get<0>(getStartingSide()) == "RED" &&
-           std::get<1>(getStartingSide()) == "RIGHT") {
-    startingRightRed();
+  // case for starting on left side of the parking zone
+  if (sideColor == RIGHT && sideSide == RIGHT ||
+      sideColor == LEFT && sideSide == RIGHT) {
+    startingLeft();
+  } else if (sideColor == RIGHT && sideSide == LEFT ||
+             sideColor == LEFT && sideSide == LEFT) {
+    startingLeft();
   } else {
-    //run program that moves robot foward and then turns left
+    // run program that moves robot foward and then turns left
     chassis.moveToPoint(0, 20, 1000);
     chassis.turnToHeading(90, 500);
   }

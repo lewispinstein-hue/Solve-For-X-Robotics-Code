@@ -61,15 +61,14 @@ void handleSoftwareTests() {
 void testPhysicals() {
   clearScreen();
   printToBrain(smallText, 25, 20, "Running Physical Tests...       ");
-  while (true) {
     printToBrain(smallText, 25, 20, "Testing Conveyor Motors...         ");
-    updateBallConveyorMotors(OUTTAKE);
+    setConveyorMotors(OUTTAKE);
     pros::delay(500);
-    updateBallConveyorMotors(UPPER_GOAL);
+    setConveyorMotors(UPPER_GOAL);
     pros::delay(500);
-    updateBallConveyorMotors(MIDDLE_GOAL);
+    setConveyorMotors(MIDDLE_GOAL);
     pros::delay(500);
-    updateBallConveyorMotors(STOPPED);
+    setConveyorMotors(STOPPED);
     pros::delay(500);
     printToBrain(smallText, 25, 20, "Testing Pneumatics...        ");
     funnel_pneumatic_left.set_value(true);
@@ -92,13 +91,12 @@ void testPhysicals() {
     right_motors_drivetrain.move(0);
     printToBrain(smallText, 25, 20, "Tests completed.      ");
     pros::delay(1000);
-    return;
-  }
 }
 
 // this is the section when we ask what setup tasks to run
 std::vector<bool> testsToRun(2, false);
 void handleSetupSelections() {
+  
   while (true) {
     printToBrain(smallText, 25, 40, "Would you like to run Software tests?");
     if (main_controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_A)) {
