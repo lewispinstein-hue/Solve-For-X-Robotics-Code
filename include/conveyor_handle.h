@@ -18,4 +18,4 @@ extern pros::Motor upper_transit_motor;
 extern pros::Motor intake_transit_motor;
 
 // foward declarations for the functions inside of the cpp file
-void updateBallConveyorMotors(ball_conveyor_state new_state);
+void setConveyorMotors(ball_conveyor_state new_state);

@@ -9,7 +9,7 @@ ball_conveyor_state current_ball_conveyor_state = STOPPED;
 
 // this is the function that takes in a wanted conveyor state, and then tells
 // the motors to move with the wanted values
-void updateBallConveyorMotors(ball_conveyor_state new_state) {
+void setConveyorMotors(ball_conveyor_state new_state) {
   // update the conveyor state to reflect what the motors are doing
   current_ball_conveyor_state = new_state;
   switch (new_state) {

@@ -2,7 +2,14 @@
 
 #include "setup.h"
 
-//foward declarations for auton routes
+// routes for starting on blue
+void startingLeftBlue();
+void startingRightBlue();
+// routes for starting on red
+void startingLeftRed();
+void startingRightRed();
+// default auton that is called during comp
 void autonomous();
-void autonomousRoute1();
-void autonomousRoute2();
+//extern variables for starting side
+extern std::string startingColor;
+extern std::string startingSide;

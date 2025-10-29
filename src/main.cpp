@@ -1,4 +1,5 @@
 #include "auton.h"
+#include "conveyor_handle.h"
 #include "setup.h"
 
 void initialize() {
@@ -70,16 +71,16 @@ void checkControllerButtonPress() {
   } else if (main_controller.get_digital_new_press(
                  Users::currentUser->getSfMediumGoal())) {
     // for toggleable button
-    updateBallConveyorMotors(
+    setConveyorMotors(
         (current_ball_conveyor_state == MIDDLE_GOAL) ? STOPPED : MIDDLE_GOAL);
   } else if (main_controller.get_digital_new_press(
                  Users::currentUser->getSfHighGoal())) {
     // for toggelable button
-    updateBallConveyorMotors(
+    setConveyorMotors(
         (current_ball_conveyor_state == UPPER_GOAL) ? STOPPED : UPPER_GOAL);
   } else if (main_controller.get_digital_new_press(
                  Users::currentUser->getSfBottomGoal())) {
-    updateBallConveyorMotors(
+                  setConveyorMotors(
         (current_ball_conveyor_state == OUTTAKE) ? STOPPED : OUTTAKE);
   }
 
@@ -88,7 +89,6 @@ void checkControllerButtonPress() {
     chassis.setPose(0, 0, 0);
     chassis.cancelAllMotions();
     main_controller.print(0, 0, "Pose reset to 0,0,0");
-    autonomousRoute2();
   } else if (main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_Y)) {
     // autonomousRoute1();
     chassis.setPose(0, 0, 0);

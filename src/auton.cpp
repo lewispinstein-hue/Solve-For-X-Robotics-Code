@@ -40,103 +40,58 @@ bool checkForEvents(int eventIndex) {
   return false;
 }
 
-ASSET(main_test_txt);
+ASSET(BlueLeftS1_txt); // moves from starting pos to inbetween loader and high
+                       // goal
+ASSET(BlueLeftS2_txt); // moves from endpoint of s1 into high goal
 
-void autonomousRoute2() {
+void startingLeftBlue() {
   // set pose to the starting position
   chassis.setPose(64.479, -13.731, 270);
-
-  // Follow the path with 10 second timeout
-  // The original 1000ms timeout was too short for this path
-  chassis.follow(main_test_txt, 9, 10000, true);
-
-  while (chassis.isInMotion()) {
-    // check what path
-    //  if (currentPath.buf == path1_NEW.buf) {
-    if (checkForEvents(1)) {
-      // the condition is met, so we need to extend the pneumatics
-      updateBallConveyorMotors(OUTTAKE);
-      pros::delay(waits[1].waitTimeMs);
-      updateBallConveyorMotors(STOPPED);
-    }
-    // if (checkForEvents(1)) {
-    //   // the condition for inside the loader is met
-    //   // run agitation code here
-    // }
-    // if (checkForEvents(2)) {
-    //   // the condition for scoring in the high goals is met
-    //   // run scoring code here
-    // }
-  }
+  //we move to the inbetween loader and high goal
+  chassis.follow(BlueLeftS1_txt, 11, 7000, true);
+  //then move backwards into the high goal
+  chassis.follow(BlueLeftS2_txt, 15, 5000, false, false);
+  //start moving pre-loaded ball into high goal
+  setConveyorMotors(OUTTAKE);
+  //we wait 2 seconds for ball to score before stopping the conveyor
+  pros::delay(2000);
+  //stopping conveyor motors
+  setConveyorMotors(STOPPED);
+  //we move on to next step
 }
 
-void autonomousRoute1() {
-  // outdated code.
-  // keep it here for reference so we have a reference point for the new code
-  std::tuple startingSideValue = {1, -1};
-  std::string startingSide = "RED";
 
-  // IMPORTANT
-  // we need to create a system that can take in the starting side, and give
-  // the correct path and outputs for auton mode
-  int SS = 1; // default value
-  if (startingSide == "BLUE") {
-    SS = std::get<0>(startingSideValue);
+//creating an input field for choosing where the robot is starting
+std::tuple<std::string, std::string> getStartingSide() {
+  const std::string startingColor = "BLUE";
+  const std::string startingSide = "LEFT";
+  return std::make_tuple(startingColor, startingSide);
+}
+
+// function to get calling during comp
+void autonomous() {
+  // case for starting on left side of blue
+  if (std::get<0>(getStartingSide()) == "BLUE" &&
+      std::get<1>(getStartingSide()) == "LEFT") {
+    startingLeftBlue();
+  }
+  // case for starting on right side of blue
+  else if (std::get<0>(getStartingSide()) == "BLUE" &&
+           std::get<1>(getStartingSide()) == "RIGHT") {
+    startingRightBlue();
+  }
+  // case for starting on left side of red
+  else if (std::get<0>(getStartingSide()) == "RED" &&
+           std::get<1>(getStartingSide()) == "LEFT") {
+    startingLeftRed();
+  }
+  // case for starting on right side of red
+  else if (std::get<0>(getStartingSide()) == "RED" &&
+           std::get<1>(getStartingSide()) == "RIGHT") {
+    startingRightRed();
   } else {
-    SS = std::get<1>(startingSideValue);
+    //run program that moves robot foward and then turns left
+    chassis.moveToPoint(0, 20, 1000);
+    chassis.turnToHeading(90, 500);
   }
-  // make sure we set the default position
-  chassis.calibrate();
-  chassis.setPose(0, 0, 0);
-  // start auton period
-  chassis.moveToPoint(0, 35, 3000);
-  chassis.turnToHeading(SS * 90, 1000);
-  // move fowards and turn towards the gates
-
-  // drive towards the gates
-  chassis.moveToPoint(20, 35, 3000);
-  // turn to face the loader
-  chassis.turnToHeading(SS * 180, 1000);
-  // extend pneumatics to prepair for intaking
-  funnel_pneumatic_left.extend();
-  funnel_pneumatic_right.extend();
-  // move into the loader
-  chassis.moveToPoint(20, 10, 1000);
-  chassis.setPose(20, 10, -180);
-  // we are now in the loader
-  //  we move back and fourth while intaking
-  // to agitate the balls into going into our conveyor
-
-  // start intaking balls
-  updateBallConveyorMotors(UPPER_GOAL);
-  // start agitation loop
-  left_motors_drivetrain.move(80);
-  right_motors_drivetrain.move(80);
-  pros::delay(200);
-  left_motors_drivetrain.move(-60);
-  right_motors_drivetrain.move(-60);
-  pros::delay(200);
-  left_motors_drivetrain.move(80);
-  right_motors_drivetrain.move(80);
-  pros::delay(200);
-  left_motors_drivetrain.move(-60);
-  right_motors_drivetrain.move(-60);
-  pros::delay(200);
-  left_motors_drivetrain.move(80);
-  right_motors_drivetrain.move(80);
-  pros::delay(1200);
-  left_motors_drivetrain.move(0);
-  right_motors_drivetrain.move(0);
-  // stop moving balls up after 2 seconds
-  updateBallConveyorMotors(STOPPED);
-  // now we need to drive backwards and score
-  // after we go backwards and score in the high goals
-  // we need to calibrate becuase the place where we are going to be scoring
-  // can lock the robot into a known space
-  // which means we can reset lemlib odometry to make it more accurate
-  uint32_t time = pros::millis();
-  if (upper_transit_motor.get_raw_position(&time) <
-      /*expected posisiton*/ 1500) {
-  }
-  // get the posistion of the motors to ensure that they are moving correctly
 }
