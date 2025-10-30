@@ -1,5 +1,7 @@
 #include "auton.h"
 #include "conveyor_handle.h"
+#include "main.h"
+#include "pros/screen.h"
 #include "setup.h"
 
 struct WaitEvent {
@@ -32,6 +34,8 @@ void selectRoute() {
     if (sideColor != MIDDLE) {
       break; // Exit the loop if the input is valid
     }
+    clearScreen();
+    // return;//FOR TESTING
     printToBrain(smallText, 25, 40, "Please pick a blue or red circle");
   }
   while (true) {
@@ -43,9 +47,11 @@ void selectRoute() {
     printToBrain(smallText, 25, 80, "Please pick left or right");
   }
   clearScreen();
-  printToBrain(TEXT_LARGE, 25, 120, "Color: %d | Side: %d", sideColor,
-               sideSide);
+  printToBrain(TEXT_MEDIUM, 25, 120, "Color: %s | Side: %s",
+               (sideColor == 0) ? "Blue" : "Red",
+               (sideSide == 0) ? "Left" : "Right");
   pros::delay(2000);
+  clearScreen();
   return;
 }
 
@@ -66,20 +72,23 @@ bool checkForEvents(int eventIndex) {
 
 ASSET(BlueLeftS1_txt) // moves from starting pos to inbetween loader and high
 // goal
-ASSET(BlueLeftS2_txt) // moves from endpoint of s1 into high goal
 
 // path for starting on left side of red parking spot
 void startingLeft() {
-  chassis.setPose(64, -14, 270);
+  chassis.setPose(64, -16, 270);
   // we move to the inbetween loader and high goal
-  chassis.follow(BlueLeftS1_txt, 4, 7000, true, false);
+  chassis.follow(BlueLeftS1_txt, 10, 2000, true, true);
   while (chassis.isInMotion()) {
-    pros::delay(30);
+    //block actions
+    pros::delay(20);
   }
-  //make sure we are facing the exact right position
-    chassis.turnToHeading(90, 1500);
+  // make sure we are facing the exact right position
+  chassis.moveToPoint(52, -47, 500, {}, false);
+  chassis.turnToHeading(90, 1500, {}, false);
   // then move backwards into the high goal
-  chassis.follow(BlueLeftS2_txt, 4, 5000, false, false);
+  chassis.moveToPoint(24, -47, 1000, {.forwards = false, .maxSpeed = 60},
+                      false);
+  chassis.setPose(24, -47, 90);
   // start moving pre-loaded ball into high goal
   setConveyorMotors(UPPER_GOAL);
   // we wait 2 seconds for ball to score before stopping the conveyor
@@ -87,6 +96,10 @@ void startingLeft() {
   // stopping conveyor motors
   setConveyorMotors(STOPPED);
   // we move on to next step
+    // move back to inbetween the goal and loader
+  chassis.moveToPoint(42, -47, 600, {}, false);
+  //move to balls
+  chassis.moveToPoint(22, -33, 1000, {}, false);
 }
 
 ASSET(distanceTest_txt)
@@ -96,25 +109,26 @@ std::vector<WaitEvent> waitsForTest = {
 };
 void startingRight() {
   // params
-  //set starting pose
+  // set starting pose
   chassis.setPose(64, 14, 270);
-  //start route
-  chassis.follow(distanceTest_txt, 7, 4000, true, true);
-  //check to see if we are hitting waypoints
-  while (chassis.isInMotion()) {
-    if (checkForEvents(0)) {
-      pros::delay(waitsForTest[0].waitTimeMs);
-    }
-    if (checkForEvents(1)) {
-      pros::delay(waitsForTest[0].waitTimeMs);
-    }
-    if (checkForEvents(2)) {
-      pros::delay(waitsForTest[0].waitTimeMs);
-    }
-    if (checkForEvents(3)) {
-      pros::delay(waitsForTest[0].waitTimeMs);
-    }
-  }
+  // start route
+  chassis.follow(distanceTest_txt, 7, 4000, true, false);
+  chassis.turnToHeading(0, 500);
+  // check to see if we are hitting waypoints
+  //  while (chassis.isInMotion()) {
+  //    if (checkForEvents(0)) {
+  //      pros::delay(waitsForTest[0].waitTimeMs);
+  //    }
+  //    if (checkForEvents(1)) {
+  //      pros::delay(waitsForTest[0].waitTimeMs);
+  //    }
+  //    if (checkForEvents(2)) {
+  //      pros::delay(waitsForTest[0].waitTimeMs);
+  //    }
+  //    if (checkForEvents(3)) {
+  //      pros::delay(waitsForTest[0].waitTimeMs);
+  //    }
+  //  }
 }
 
 // function to get calling during comp
@@ -122,7 +136,7 @@ void autonomous() {
   // case for starting on left side of the parking zone
   if (sideColor == RIGHT && sideSide == RIGHT ||
       sideColor == LEFT && sideSide == RIGHT) {
-    startingLeft();
+    startingRight();
   }
   // case for starting on the right side of the parking zone
   else if (sideColor == RIGHT && sideSide == LEFT ||

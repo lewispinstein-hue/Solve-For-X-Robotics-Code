@@ -58,7 +58,7 @@ void drawBottomButtons();
 enum ButtonPressed {
     NONE  = -1,
     LEFT  = 0,
-    MIDDLE= 1,
+    MIDDLE=  1,
     RIGHT = 2
 };
 ButtonPressed waitForBottomButtonTap();

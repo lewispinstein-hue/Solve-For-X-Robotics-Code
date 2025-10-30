@@ -1,5 +1,6 @@
 #include "auton.h"
 #include "conveyor_handle.h"
+#include "liblvgl/llemu.hpp"
 #include "setup.h"
 
 void initialize() {
@@ -24,7 +25,7 @@ void initialize() {
     testPhysicals();
   }
   // runOdomCalibration();
-  selectRoute();
+  // selectRoute();
 }
 
 /**
@@ -94,11 +95,14 @@ void checkControllerButtonPress() {
     autonomous();
   } else if (main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_Y)) {
     // autonomousRoute1();
-    chassis.setPose(0, 0, 0);
+    // chassis.setPose(0, 0, 0);
+    // chassis.moveToPose(0, 15, 0, 10000);
+    chassis.setPose(64, -16, 270);
+
   } else if (main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_X)) {
     // runOdomCalibration();
     chassis.setPose(0, 0, 0);
-    chassis.turnToHeading(180, 1000);
+    chassis.turnToHeading(180, 10000);
   }
 }
 

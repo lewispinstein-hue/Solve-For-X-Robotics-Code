@@ -1,7 +1,7 @@
 {
   "py/object": "pros.conductor.project.Project",
   "py/state": {
-    "project_name": "Solve For X Robotics Code",
+    "project_name": "Main code",
     "target": "v5",
     "templates": {
       "LemLib": {

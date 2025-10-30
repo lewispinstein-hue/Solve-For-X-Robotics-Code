@@ -40,7 +40,7 @@ lemlib::TrackingWheel rightVerticalTrackingWheel(&right_motors_drivetrain,
                                                  (TRACK_WIDTH / 2), 400);
 // external sensor for tracking horizontal movement
 lemlib::TrackingWheel horizontalTrackingWheel(&horizontal1,
-                                              lemlib::Omniwheel::NEW_2, 0.5);
+                                              lemlib::Omniwheel::NEW_275, 0.5);
 // sensor init with the sensors we created above
 
 lemlib::OdomSensors
@@ -52,14 +52,15 @@ lemlib::OdomSensors
     );
 
 // settings lemlib uses (need to be tweaked)
-lemlib::ControllerSettings lateralSettings(12, 0, 40, // kP, kI, kD
+lemlib::ControllerSettings lateralSettings(18, 0, 50, // kP, kI, kD
                                            0,    // integral anti-windup range
                                            0, 0, // small error range, timeout
                                            0, 0, // large error range, timeout
-                                           0     // max acceleration (slew)
+                                           10     // max acceleration (slew)
 );
 
-lemlib::ControllerSettings angularSettings(4, 0, 44, 0, 0, 0, 0, 0, 0);
+lemlib::ControllerSettings angularSettings(6, 0, 65, 
+  0, 0, 0, 0, 0, 10);
 
 // creating drivedrain object te be used in chassis
 lemlib::Drivetrain main_drivetrain(

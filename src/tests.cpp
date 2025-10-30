@@ -1,4 +1,5 @@
 // this is the file for running tests. Add tests here
+#include "main.h"
 #include "setup.h"
 
 // software tests - internal
@@ -61,42 +62,42 @@ void handleSoftwareTests() {
 void testPhysicals() {
   clearScreen();
   printToBrain(smallText, 25, 20, "Running Physical Tests...       ");
-    printToBrain(smallText, 25, 20, "Testing Conveyor Motors...         ");
-    setConveyorMotors(OUTTAKE);
-    pros::delay(500);
-    setConveyorMotors(UPPER_GOAL);
-    pros::delay(500);
-    setConveyorMotors(MIDDLE_GOAL);
-    pros::delay(500);
-    setConveyorMotors(STOPPED);
-    pros::delay(500);
-    printToBrain(smallText, 25, 20, "Testing Pneumatics...        ");
-    funnel_pneumatic_left.set_value(true);
-    funnel_pneumatic_right.set_value(true);
-    pros::delay(500);
-    funnel_pneumatic_left.set_value(false);
-    funnel_pneumatic_right.set_value(false);
-    pros::delay(500);
-    printToBrain(smallText, 25, 20, "Testing Drivetrain...      ");
-    left_motors_drivetrain.move(60);
-    right_motors_drivetrain.move(60);
-    pros::delay(500);
-    left_motors_drivetrain.move(0);
-    right_motors_drivetrain.move(0);
-    pros::delay(250);
-    left_motors_drivetrain.move(-60);
-    right_motors_drivetrain.move(-60);
-    pros::delay(500);
-    left_motors_drivetrain.move(0);
-    right_motors_drivetrain.move(0);
-    printToBrain(smallText, 25, 20, "Tests completed.      ");
-    pros::delay(1000);
+  printToBrain(smallText, 25, 20, "Testing Conveyor Motors...         ");
+  setConveyorMotors(OUTTAKE);
+  pros::delay(500);
+  setConveyorMotors(UPPER_GOAL);
+  pros::delay(500);
+  setConveyorMotors(MIDDLE_GOAL);
+  pros::delay(500);
+  setConveyorMotors(STOPPED);
+  pros::delay(500);
+  printToBrain(smallText, 25, 20, "Testing Pneumatics...        ");
+  funnel_pneumatic_left.set_value(true);
+  funnel_pneumatic_right.set_value(true);
+  pros::delay(500);
+  funnel_pneumatic_left.set_value(false);
+  funnel_pneumatic_right.set_value(false);
+  pros::delay(500);
+  printToBrain(smallText, 25, 20, "Testing Drivetrain...      ");
+  left_motors_drivetrain.move(60);
+  right_motors_drivetrain.move(60);
+  pros::delay(500);
+  left_motors_drivetrain.move(0);
+  right_motors_drivetrain.move(0);
+  pros::delay(250);
+  left_motors_drivetrain.move(-60);
+  right_motors_drivetrain.move(-60);
+  pros::delay(500);
+  left_motors_drivetrain.move(0);
+  right_motors_drivetrain.move(0);
+  printToBrain(smallText, 25, 20, "Tests completed.      ");
+  pros::delay(1000);
 }
 
 // this is the section when we ask what setup tasks to run
 std::vector<bool> testsToRun(2, false);
 void handleSetupSelections() {
-  
+
   while (true) {
     printToBrain(smallText, 25, 40, "Would you like to run Software tests?");
     if (main_controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_A)) {
@@ -139,46 +140,49 @@ static const float ACTUAL_ROTATION_DEGREES = 360.0; // degrees
 // -------------------------------------
 
 void runOdomCalibration() {
-    pros::lcd::initialize();
-    pros::lcd::print(0, "ODOM CALIBRATION");
+  pros::lcd::initialize();
+  pros::lcd::print(0, "ODOM CALIBRATION");
 
-    // STEP 1: Reset pose
-    chassis.setPose(0,0,0);
-    pros::delay(300);
+  // STEP 1: Reset pose
+  chassis.setPose(0, 0, 0);
+  pros::delay(300);
 
-    pros::lcd::print(1, "Press A to drive forward...");
-    // wait for button
-    while(!main_controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_A)) {
-        pros::delay(20);
-    }
-    pros::lcd::print(2, "Driving forward...");
-    
-    // Drive forward to ACTUAL_FORWARD_DISTANCE
-    chassis.moveToPose(0, ACTUAL_FORWARD_DISTANCE, 0, 5000);
-    pros::delay(500);
+  pros::lcd::print(1, "Press A to drive forward...");
+  // wait for button
+  while (!main_controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_A)) {
+    pros::delay(20);
+  }
+  pros::lcd::print(2, "Driving forward...");
 
-    float measuredY = chassis.getPose().y;
-    pros::lcd::print(3, "MeasuredY: %.2f", measuredY);
+  // Drive forward to ACTUAL_FORWARD_DISTANCE
+  chassis.moveToPose(0, ACTUAL_FORWARD_DISTANCE, 0, 5000);
+  pros::delay(500);
 
-    float forwardScale = ACTUAL_FORWARD_DISTANCE / measuredY;
-    pros::lcd::print(4, "Y scale: %.4f", forwardScale);
+  float measuredY = chassis.getPose().y;
+  pros::lcd::print(3, "MeasuredY: %.2f", measuredY);
 
-    // STEP 2: Rotate test
-    pros::lcd::print(5, "Press A to rotate...");
-    while(!main_controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_A)) {
-        pros::delay(20);
-    }
+  float forwardScale = ACTUAL_FORWARD_DISTANCE / measuredY;
+  pros::lcd::print(4, "Y scale: %.4f", forwardScale);
 
-    pros::lcd::print(6, "Rotating 360...");
-    chassis.turnToHeading(ACTUAL_ROTATION_DEGREES, 2000);
-    pros::delay(400);
+  // STEP 2: Rotate test
+  pros::lcd::print(5, "Press A to rotate...");
+  while (!main_controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_A)) {
+    pros::delay(20);
+  }
 
-    // We'll pull heading from the chassis pose
-    float measuredHeading = chassis.getPose().theta;
-    pros::lcd::print(7, "MeasuredDeg: %.2f", measuredHeading);
+  pros::lcd::print(6, "Rotating 360...");
+  chassis.turnToHeading(ACTUAL_ROTATION_DEGREES, 2000);
+  pros::delay(400);
 
-    float trackWidthScale = ACTUAL_ROTATION_DEGREES / measuredHeading;
-    pros::lcd::print(8, "TrackWidth scale: %.4f", trackWidthScale);
+  // We'll pull heading from the chassis pose
+  float measuredHeading = chassis.getPose().theta;
+  pros::lcd::print(7, "MeasuredDeg: %.2f", measuredHeading);
 
-    pros::lcd::print(9, "Done.");
+  float trackWidthScale = ACTUAL_ROTATION_DEGREES / measuredHeading;
+  pros::lcd::print(8, "TrackWidth scale: %.4f", trackWidthScale);
+
+  pros::lcd::print(9, "Done.");
+  pros::delay(2000);
+  pros::lcd::shutdown();
+  clearScreen();
 }
