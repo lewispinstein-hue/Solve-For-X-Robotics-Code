@@ -26,11 +26,29 @@ ButtonPressed sideColor;
 ButtonPressed sideSide;
 void selectRoute() {
   drawBottomButtons();
-  printToBrain(smallText, 25, 20, "Pick path color");
-  ButtonPressed sideColor = waitForBottomButtonTap();
-  printToBrain(smallText, 25, 40, "Pick path side");
-  ButtonPressed sideSide = waitForBottomButtonTap();
+  while (true) {
+    printToBrain(smallText, 25, 20, "Pick path color");
+    sideColor = waitForBottomButtonTap();
+    if (sideColor != MIDDLE) {
+      break; // Exit the loop if the input is valid
+    }
+    printToBrain(smallText, 25, 40, "Please pick a blue or red circle");
+  }
+  while (true) {
+    printToBrain(smallText, 25, 60, "Pick path side");
+    sideSide = waitForBottomButtonTap();
+    if (sideColor != MIDDLE) {
+      break; // Exit the loop if the input is valid
+    }
+    printToBrain(smallText, 25, 80, "Please pick left or right");
+  }
+  clearScreen();
+  printToBrain(TEXT_LARGE, 25, 120, "Color: %d | Side: %d", sideColor,
+               sideSide);
+  pros::delay(2000);
+  return;
 }
+
 bool checkForEvents(int eventIndex) {
   // if the robot is within the tolerance of the event, set the event to
   // triggered and return true
@@ -46,9 +64,9 @@ bool checkForEvents(int eventIndex) {
   return waits[eventIndex].triggered;
 }
 
-ASSET(BlueLeftS1_txt); // moves from starting pos to inbetween loader and high
+ASSET(BlueLeftS1_txt) // moves from starting pos to inbetween loader and high
 // goal
-ASSET(BlueLeftS2_txt); // moves from endpoint of s1 into high goal
+ASSET(BlueLeftS2_txt) // moves from endpoint of s1 into high goal
 
 // path for starting on left side of red parking spot
 void startingLeft() {
@@ -58,8 +76,10 @@ void startingLeft() {
   while (chassis.isInMotion()) {
     pros::delay(30);
   }
+  //make sure we are facing the exact right position
+    chassis.turnToHeading(90, 1500);
   // then move backwards into the high goal
-  // chassis.follow(BlueLeftS2_txt, 9, 5000, false, false);
+  chassis.follow(BlueLeftS2_txt, 4, 5000, false, false);
   // start moving pre-loaded ball into high goal
   setConveyorMotors(UPPER_GOAL);
   // we wait 2 seconds for ball to score before stopping the conveyor
@@ -69,8 +89,32 @@ void startingLeft() {
   // we move on to next step
 }
 
+ASSET(distanceTest_txt)
+std::vector<WaitEvent> waitsForTest = {
+    {64, 14, 500, .2}, {44, 14, 500, .2}, {44, 34, 500, .2}, {14, 34, 500, .2}
+
+};
 void startingRight() {
   // params
+  //set starting pose
+  chassis.setPose(64, 14, 270);
+  //start route
+  chassis.follow(distanceTest_txt, 7, 4000, true, true);
+  //check to see if we are hitting waypoints
+  while (chassis.isInMotion()) {
+    if (checkForEvents(0)) {
+      pros::delay(waitsForTest[0].waitTimeMs);
+    }
+    if (checkForEvents(1)) {
+      pros::delay(waitsForTest[0].waitTimeMs);
+    }
+    if (checkForEvents(2)) {
+      pros::delay(waitsForTest[0].waitTimeMs);
+    }
+    if (checkForEvents(3)) {
+      pros::delay(waitsForTest[0].waitTimeMs);
+    }
+  }
 }
 
 // function to get calling during comp
@@ -79,8 +123,10 @@ void autonomous() {
   if (sideColor == RIGHT && sideSide == RIGHT ||
       sideColor == LEFT && sideSide == RIGHT) {
     startingLeft();
-  } else if (sideColor == RIGHT && sideSide == LEFT ||
-             sideColor == LEFT && sideSide == LEFT) {
+  }
+  // case for starting on the right side of the parking zone
+  else if (sideColor == RIGHT && sideSide == LEFT ||
+           sideColor == LEFT && sideSide == LEFT) {
     startingLeft();
   } else {
     // run program that moves robot foward and then turns left

@@ -24,6 +24,7 @@ void initialize() {
     testPhysicals();
   }
   // runOdomCalibration();
+  selectRoute();
 }
 
 /**
@@ -76,8 +77,8 @@ void checkControllerButtonPress() {
   } else if (main_controller.get_digital_new_press(
                  Users::currentUser->getSfHighGoal())) {
     // for toggelable button
-    setConveyorMotors(
-        (current_ball_conveyor_state == UPPER_GOAL) ? STOPPED : UPPER_GOAL);
+    setConveyorMotors((current_ball_conveyor_state == UPPER_GOAL) ? STOPPED
+                                                                  : UPPER_GOAL);
   } else if (main_controller.get_digital_new_press(
                  Users::currentUser->getSfBottomGoal())) {
     setConveyorMotors((current_ball_conveyor_state == OUTTAKE) ? STOPPED
@@ -89,11 +90,11 @@ void checkControllerButtonPress() {
     chassis.setPose(0, 0, 0);
     chassis.cancelAllMotions();
     main_controller.print(0, 0, "Pose reset to 0,0,0");
-    startingLeft();
+    selectRoute();
+    autonomous();
   } else if (main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_Y)) {
     // autonomousRoute1();
     chassis.setPose(0, 0, 0);
-    chassis.moveToPoint(20, 20, 2000);
   } else if (main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_X)) {
     // runOdomCalibration();
     chassis.setPose(0, 0, 0);

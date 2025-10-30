@@ -1,6 +1,7 @@
 #include "setup.h"
 #include "lemlib/chassis/trackingWheel.hpp"
 #include "pros/rotation.hpp"
+#include "pros/screen.h"
 
 // init drivetrain motor groups and controller.
 // sets motor to blue gear cartridge, inits ports, and starts tracking the
@@ -103,31 +104,41 @@ void clearScreen() {
 }
 
 // from here: code for checking if the screen is pressed
-
 constexpr int SCREEN_WIDTH = 480;
 constexpr int SCREEN_HEIGHT = 240;
-constexpr int BUTTON_HEIGHT = 80;
+constexpr int BUTTON_DIAMETER = 75; // circle diameter
+constexpr int BUTTON_RADIUS = BUTTON_DIAMETER / 2;
+constexpr int BUTTON_Y_CENTER =
+    SCREEN_HEIGHT - BUTTON_RADIUS - 5; // a bit above bottom edge
+constexpr int BUTTON_SPACING = 20;     // gap between circles
 
-// Draw the three bottom buttons (optional)
 void drawBottomButtons() {
   clearScreen();
-  // left
-  pros::screen::set_pen(pros::c::COLOR_BLUE);
-  pros::screen::fill_rect(0, SCREEN_HEIGHT - BUTTON_HEIGHT,
-                          SCREEN_WIDTH / 3 - 1, SCREEN_HEIGHT);
-  // middle
-  pros::screen::set_pen(pros::c::COLOR_GREEN);
-  pros::screen::fill_rect(SCREEN_WIDTH / 3, SCREEN_HEIGHT - BUTTON_HEIGHT,
-                          2 * SCREEN_WIDTH / 3 - 1, SCREEN_HEIGHT);
-  // right
-  pros::screen::set_pen(pros::c::COLOR_RED);
-  pros::screen::fill_rect(2 * SCREEN_WIDTH / 3, SCREEN_HEIGHT - BUTTON_HEIGHT,
-                          SCREEN_WIDTH, SCREEN_HEIGHT);
 
-  pros::screen::set_pen(pros::c::COLOR_WHITE);
-  pros::screen::print(TEXT_MEDIUM, 40, SCREEN_HEIGHT - 50, "LEFT");
-  pros::screen::print(TEXT_MEDIUM, 200, SCREEN_HEIGHT - 50, "MID");
-  pros::screen::print(TEXT_MEDIUM, 360, SCREEN_HEIGHT - 50, "RIGHT");
+  // Calculate the centers for the three circles
+  int center1_x = SCREEN_WIDTH / 6; // roughly 1/6 of width (left)
+  int center2_x = SCREEN_WIDTH / 2; // middle
+  int center3_x = SCREEN_WIDTH - SCREEN_WIDTH / 6; // right
+
+  // LEFT circle
+  pros::screen::set_pen(pros::c::COLOR_BLUE);
+  pros::screen::fill_circle(center1_x, BUTTON_Y_CENTER, BUTTON_RADIUS);
+
+  // MIDDLE circle
+  pros::screen::set_pen(pros::c::COLOR_GREEN);
+  pros::screen::fill_circle(center2_x, BUTTON_Y_CENTER, BUTTON_RADIUS);
+
+  // RIGHT circle
+  pros::screen::set_pen(pros::c::COLOR_RED);
+  pros::screen::fill_circle(center3_x, BUTTON_Y_CENTER, BUTTON_RADIUS);
+
+  // Label each circle
+  pros::screen::set_pen(pros::c::COLOR_WHITE); 
+  pros::screen::print(TEXT_MEDIUM, center1_x - 25, BUTTON_Y_CENTER - 10,
+                      "LEFT");
+  pros::screen::print(TEXT_MEDIUM, center2_x - 20, BUTTON_Y_CENTER - 10, "MID");
+  pros::screen::print(TEXT_MEDIUM, center3_x - 30, BUTTON_Y_CENTER - 10,
+                      "RIGHT");
 }
 
 /*
@@ -135,107 +146,43 @@ void drawBottomButtons() {
  Uses release_count to detect the tap event which is compatible across PROS
  versions.
 */
-ButtonPressed waitForBottomButtonTap() {
-  // get initial release count (may be zero)
-  auto ts = pros::screen::touch_status();
-  int32_t last_release_count = 0;
-// Some PROS variants expose a release_count field directly; handle both
-// possibilities:
-#if defined(__cplusplus)
-  // Try to read release_count safely; if not present, the compiler will error.
-  // We'll guard with a try/catch-like strategy below by reading previous ts
-  // into last_release_count.
-#endif
 
-// Best-effort attempt to extract release_count without assuming a boolean
-// 'pressed' If touch_status has release_count field, use it; otherwise we
-// fallback to edge-detect on x/y changes. Initialize last_release_count to
-// current value if present:
-#ifdef __GNUC__
-  // GCC-style trick: attempt to read release_count if present
-  // (If your toolchain rejects this, the following line may need removing — we
-  // still have a fallback)
-  last_release_count = ts.release_count;
-#else
-  (void)ts; // keep compiler quiet if above access isn't supported
-#endif
+constexpr int CENTER_LEFT = SCREEN_WIDTH / 6;
+constexpr int CENTER_MIDDLE = SCREEN_WIDTH / 2;
+constexpr int CENTER_RIGHT = SCREEN_WIDTH - SCREEN_WIDTH / 6;
+
+ButtonPressed waitForBottomButtonTap() {
+  int last_release_count = pros::screen::touch_status().release_count;
 
   while (true) {
-    auto touch = pros::screen::touch_status();
+    screen_touch_status_s touch = pros::screen::touch_status();
 
-    // 1) Preferred: detect release_count increment (tap happened)
-    bool gotTap = false;
-    int32_t current_release_count = 0;
-#ifdef __GNUC__
-    // guarded read - many PROS builds have this member
-    current_release_count = touch.release_count;
-    if (current_release_count != last_release_count) {
-      // release_count changed -> a press+release event occurred
-      gotTap = true;
-      last_release_count = current_release_count;
-    }
-#endif
+    // Detect a release event (finger lifted)
+    if (touch.release_count != last_release_count) {
+      last_release_count = touch.release_count;
 
-    // 2) Fallback: if release_count not available (or build doesn't allow
-    // accessing it), detect a press followed by release using x/y becoming
-    // non-zero then zero.
-    static bool wasPressed = false;
-    if (!gotTap) {
-      // Many PROS versions set coords to 0/0 when not pressed. Use that as
-      // fallback.
-      int x = touch.x;
-      int y = touch.y;
-      bool currentlyPressed =
-          !(x == 0 && y == 0); // heuristics: non-zero coords -> touch is down
-
-      if (currentlyPressed && !wasPressed) {
-        // finger went down
-        wasPressed = true;
-      } else if (!currentlyPressed && wasPressed) {
-        // finger released -> treat as tap
-        wasPressed = false;
-        gotTap = true;
-      }
-    }
-
-    if (gotTap) {
-      // Use the coordinates captured at the moment of release for location.
-      // Note: touch.x/y may be zero on some firmwares at release; if so, prefer
-      // previous coords.
       int x = touch.x;
       int y = touch.y;
 
-      // If zero or invalid, we can wait a tiny bit and reread (best-effort)
-      if (x == 0 && y == 0) {
-        pros::delay(10);
-        auto t2 = pros::screen::touch_status();
-        x = t2.x;
-        y = t2.y;
-      }
+      // Calculate squared distances to each circle
+      int dxL = x - CENTER_LEFT;
+      int dyL = y - BUTTON_Y_CENTER;
+      int dxM = x - CENTER_MIDDLE;
+      int dyM = y - BUTTON_Y_CENTER;
+      int dxR = x - CENTER_RIGHT;
+      int dyR = y - BUTTON_Y_CENTER;
 
-      // sanity clamp
-      if (x < 0)
-        x = 0;
-      if (x > SCREEN_WIDTH)
-        x = SCREEN_WIDTH;
-      if (y < 0)
-        y = 0;
-      if (y > SCREEN_HEIGHT)
-        y = SCREEN_HEIGHT;
+      int r2 = pow(BUTTON_RADIUS, 2);
 
-      // ensure it was in bottom region
-      if (y >= SCREEN_HEIGHT - BUTTON_HEIGHT) {
-        if (x < SCREEN_WIDTH / 3)
-          return ButtonPressed::LEFT;
-        else if (x < 2 * SCREEN_WIDTH / 3)
-          return ButtonPressed::MIDDLE;
-        else
-          return ButtonPressed::RIGHT;
-      } else {
-        // tap outside bottom buttons — ignore and continue waiting
-      }
+      // check if the button press is in the desired area
+      if (pow(dxL, 2) + pow(dyL, 2) <= r2)
+        return LEFT;
+      if (pow(dxM, 2) + pow(dyM, 2) <= r2)
+        return MIDDLE;
+      if (pow(dxR, 2) + pow(dyR, 2) <= r2)
+        return RIGHT;
     }
 
-    pros::delay(15); // yield to OS and debounce
+    pros::delay(20);
   }
 }
