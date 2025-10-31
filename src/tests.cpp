@@ -99,7 +99,7 @@ std::vector<bool> testsToRun(2, false);
 void handleSetupSelections() {
 
   while (true) {
-    printToBrain(smallText, 25, 40, "Would you like to run Software tests?");
+    printToBrain(smallText, 25, 40, "Would you like to run Software tests? X=no, Y=yes");
     if (main_controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_A)) {
       printToBrain(smallText, 25, 40, "Selected: TRUE");
       testsToRun[0] = true;

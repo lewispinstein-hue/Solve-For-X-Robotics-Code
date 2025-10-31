@@ -1,6 +1,3 @@
-#include "auton.h"
-#include "conveyor_handle.h"
-#include "liblvgl/llemu.hpp"
 #include "setup.h"
 
 void initialize() {
@@ -13,7 +10,7 @@ void initialize() {
   upper_transit_motor.set_brake_mode(pros::MotorBrake::brake);
   intake_transit_motor.set_brake_mode(pros::MotorBrake::brake);
   // handle tests
-  // handleSetupSelections();
+  handleSetupSelections();
   // run the acording tests
   if (testsToRun[0] == true) {
     clearScreen();
@@ -25,7 +22,7 @@ void initialize() {
     testPhysicals();
   }
   // runOdomCalibration();
-  // selectRoute();
+  selectRoute();
 }
 
 /**
@@ -88,11 +85,11 @@ void checkControllerButtonPress() {
 
   // testing buttons for lemlib
   else if (main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_A)) {
-    chassis.setPose(0, 0, 0);
-    chassis.cancelAllMotions();
-    main_controller.print(0, 0, "Pose reset to 0,0,0");
-    selectRoute();
-    autonomous();
+    // chassis.setPose(0, 0, 0);
+    // chassis.cancelAllMotions();
+    // main_controller.print(0, 0, "Pose reset to 0,0,0");
+    // selectRoute();
+    // autonomous();
   } else if (main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_Y)) {
     // autonomousRoute1();
     // chassis.setPose(0, 0, 0);
@@ -101,8 +98,8 @@ void checkControllerButtonPress() {
 
   } else if (main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_X)) {
     // runOdomCalibration();
-    chassis.setPose(0, 0, 0);
-    chassis.turnToHeading(180, 10000);
+    // chassis.setPose(0, 0, 0);
+    // chassis.turnToHeading(180, 10000);
   }
 }
 

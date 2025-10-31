@@ -75,23 +75,28 @@ void startingLeft() {
 }
 
 ASSET(BlueRightT_txt)
+
 void startingRight() {
   // set starting pose
-  chassis.setPose(61, 18, 270);
+  chassis.setPose(64, 14, 270);
   // start route
-  chassis.follow(BlueRightT_txt, 7, 4000, true);
-  while (chassis.isInMotion()) {
-    // block actions
-    pros::delay(20);
-  }
-  // move to correct pos
-  chassis.moveToPoint(52, 47, 500);
+  chassis.moveToPoint(40, 14, 2000, {.maxSpeed = 80});
+  chassis.moveToPoint(40, 47, 2000, {.maxSpeed = 80});
+  chassis.moveToPoint(48, 47, 2000, {.maxSpeed = 80});
   // turn to correct heading
-  chassis.turnToHeading(90, 500);
+  chassis.turnToHeading(90, 1000, {.maxSpeed = 80});
+  chassis.moveToPoint(48, 47, 2000, {.maxSpeed = 80});
+
   // move to goal
-  chassis.moveToPoint(25, 47, 1000, {.forwards = false, .maxSpeed = 80});
+  double currentY = chassis.getPose().y;
+  chassis.turnToHeading(90, 1000, {.maxSpeed = 80});
+  chassis.moveToPoint(20, 47, 3000, {.forwards = false, .maxSpeed = 40},
+                      false);
+  // chassis.setPose(27, 47, 90);
+
+
+  main_controller.rumble("-.");
   // reset pos to couteract motor slipping
-  chassis.setPose(27, 47, 90);
   // wait to start moving
   while (chassis.isInMotion()) {
     // block actions
@@ -106,11 +111,11 @@ void startingRight() {
   // moving to inbetween loader and goal
   chassis.moveToPoint(40, 47, 800, {.maxSpeed = 80});
   // turning to face balls
-  chassis.turnToHeading(180, 400);
+  chassis.turnToHeading(180, 1000);
   // move to balls
   chassis.moveToPoint(42, 22, 1000, {}, false);
   // face balls
-  chassis.turnToHeading(270, 300);
+  chassis.turnToHeading(270, 1000);
   // next step: move to balls slowly and intake
 }
 
