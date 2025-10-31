@@ -4,22 +4,6 @@
 #include "pros/screen.h"
 #include "setup.h"
 
-struct WaitEvent {
-  double x;               // X position to trigger
-  double y;               // Y position (optional)
-  int waitTimeMs;         // how long to wait
-  double tolerance = 0.1; // relative positional error for event to trigger
-  bool triggered = false; // triggered when the robot is at the event
-};
-
-std::vector<WaitEvent> waits = {
-    // point for extending pneumatics
-    {-47, 47, 200, 0.2},
-    // event for inside of the loader
-    {67.8, -47.5, 2000, 0.3},
-    // event for scoring in the high goals
-    {25.0, 46.0, 2000, 0.2}};
-
 // PROVIDED BY https://path.jerryio.com
 // Note: Asset file is static/jerryio_path1 (no .txt extension for symbol
 // compatibility)
@@ -55,21 +39,6 @@ void selectRoute() {
   return;
 }
 
-bool checkForEvents(int eventIndex) {
-  // if the robot is within the tolerance of the event, set the event to
-  // triggered and return true
-
-  // checking the robots position against the wanted position
-  if (fabs(chassis.getPose().x - waits[eventIndex].x) <
-          waits[eventIndex].tolerance &&
-      fabs(chassis.getPose().y - waits[eventIndex].y) <
-          waits[eventIndex].tolerance) {
-    waits[eventIndex].triggered = true;
-  }
-  // if the robot is not within the tolerance of the event, return false
-  return waits[eventIndex].triggered;
-}
-
 ASSET(BlueLeftS1_txt) // moves from starting pos to inbetween loader and high
 // goal
 
@@ -79,7 +48,7 @@ void startingLeft() {
   // we move to the inbetween loader and high goal
   chassis.follow(BlueLeftS1_txt, 10, 2000, true, true);
   while (chassis.isInMotion()) {
-    //block actions
+    // block actions
     pros::delay(20);
   }
   // make sure we are facing the exact right position
@@ -96,39 +65,53 @@ void startingLeft() {
   // stopping conveyor motors
   setConveyorMotors(STOPPED);
   // we move on to next step
-    // move back to inbetween the goal and loader
+  // move back to inbetween the goal and loader
   chassis.moveToPoint(42, -47, 600, {}, false);
-  //move to balls
-  chassis.moveToPoint(22, -33, 1000, {}, false);
+  // move to balls
+  chassis.moveToPoint(43, -22, 1000, {}, false);
+  // face balls
+  chassis.turnToHeading(270, 300);
+  // next step: move to balls slowly and intake
 }
 
-ASSET(distanceTest_txt)
-std::vector<WaitEvent> waitsForTest = {
-    {64, 14, 500, .2}, {44, 14, 500, .2}, {44, 34, 500, .2}, {14, 34, 500, .2}
-
-};
+ASSET(BlueRightT_txt)
 void startingRight() {
-  // params
   // set starting pose
-  chassis.setPose(64, 14, 270);
+  chassis.setPose(61, 18, 270);
   // start route
-  chassis.follow(distanceTest_txt, 7, 4000, true, false);
-  chassis.turnToHeading(0, 500);
-  // check to see if we are hitting waypoints
-  //  while (chassis.isInMotion()) {
-  //    if (checkForEvents(0)) {
-  //      pros::delay(waitsForTest[0].waitTimeMs);
-  //    }
-  //    if (checkForEvents(1)) {
-  //      pros::delay(waitsForTest[0].waitTimeMs);
-  //    }
-  //    if (checkForEvents(2)) {
-  //      pros::delay(waitsForTest[0].waitTimeMs);
-  //    }
-  //    if (checkForEvents(3)) {
-  //      pros::delay(waitsForTest[0].waitTimeMs);
-  //    }
-  //  }
+  chassis.follow(BlueRightT_txt, 7, 4000, true);
+  while (chassis.isInMotion()) {
+    // block actions
+    pros::delay(20);
+  }
+  // move to correct pos
+  chassis.moveToPoint(52, 47, 500);
+  // turn to correct heading
+  chassis.turnToHeading(90, 500);
+  // move to goal
+  chassis.moveToPoint(25, 47, 1000, {.forwards = false, .maxSpeed = 80});
+  // reset pos to couteract motor slipping
+  chassis.setPose(27, 47, 90);
+  // wait to start moving
+  while (chassis.isInMotion()) {
+    // block actions
+    pros::delay(20);
+  }
+  // start scoring ball
+  setConveyorMotors(UPPER_GOAL);
+  // we wait 2 seconds for ball to score before stopping the conveyor
+  pros::delay(2000);
+  // stopping conveyor motors
+  setConveyorMotors(STOPPED);
+  // moving to inbetween loader and goal
+  chassis.moveToPoint(40, 47, 800, {.maxSpeed = 80});
+  // turning to face balls
+  chassis.turnToHeading(180, 400);
+  // move to balls
+  chassis.moveToPoint(42, 22, 1000, {}, false);
+  // face balls
+  chassis.turnToHeading(270, 300);
+  // next step: move to balls slowly and intake
 }
 
 // function to get calling during comp
