@@ -10,7 +10,7 @@ void initialize() {
   upper_transit_motor.set_brake_mode(pros::MotorBrake::brake);
   intake_transit_motor.set_brake_mode(pros::MotorBrake::brake);
   // handle tests
-  handleSetupSelections();
+  // handleSetupSelections();
   // run the acording tests
   if (testsToRun[0] == true) {
     clearScreen();

@@ -5,8 +5,6 @@
 // routes for starting on blue
 void startingLeft();
 void startingRight();
-// default auton that is called during comp
-void autonomous();
 //extern variables for starting side
 extern std::string startingColor;
 extern std::string startingSide;
