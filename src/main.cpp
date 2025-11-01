@@ -1,3 +1,4 @@
+#include "pros/adi.hpp"
 #include "setup.h"
 
 void initialize() {
@@ -10,16 +11,21 @@ void initialize() {
   upper_transit_motor.set_brake_mode(pros::MotorBrake::brake);
   intake_transit_motor.set_brake_mode(pros::MotorBrake::brake);
   // handle tests
-  // handleSetupSelections();
-  // run the acording tests
-  if (testsToRun[0] == true) {
-    clearScreen();
-    handleSoftwareTests();
-    clearScreen();
-  }
-  if (testsToRun[1] == true) {
-    clearScreen();
-    testPhysicals();
+  drawBottomButtons();
+  printToBrain(smallText, 25, 20, "Run tests? Red = yes, Blue = no");
+  ButtonPressed runTests = waitForBottomButtonTap();
+  if (runTests == RIGHT) {
+    handleSetupSelections();
+    // run the acording tests
+    if (testsToRun[0] == true) {
+      clearScreen();
+      handleSoftwareTests();
+      clearScreen();
+    }
+    if (testsToRun[1] == true) {
+      clearScreen();
+      testPhysicals();
+    }
   }
   // runOdomCalibration();
   selectRoute();

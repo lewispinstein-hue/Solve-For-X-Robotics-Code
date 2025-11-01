@@ -99,15 +99,15 @@ std::vector<bool> testsToRun(2, false);
 void handleSetupSelections() {
 
   while (true) {
-    printToBrain(smallText, 25, 40, "Would you like to run Software tests? X=no, Y=yes");
+    printToBrain(smallText, 25, 80, "Would you like to run Software tests? X=no, Y=yes");
     if (main_controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_A)) {
-      printToBrain(smallText, 25, 40, "Selected: TRUE");
+      printToBrain(smallText, 25, 100, "Selected: TRUE");
       testsToRun[0] = true;
       pros::delay(300);
       break;
     } else if (main_controller.get_digital_new_press(
                    pros::E_CONTROLLER_DIGITAL_X)) {
-      printToBrain(smallText, 25, 40, "Selected: FALSE");
+      printToBrain(smallText, 25, 100, "Selected: FALSE");
       testsToRun[0] = false;
       pros::delay(150);
       break;
@@ -118,13 +118,13 @@ void handleSetupSelections() {
   while (true) {
     printToBrain(smallText, 25, 40, "Would you like to run Physical tests?");
     if (main_controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_A)) {
-      printToBrain(smallText, 25, 40, "Selected: TRUE");
+      printToBrain(smallText, 25, 60, "Selected: TRUE");
       testsToRun[1] = true;
       pros::delay(300);
       break;
     } else if (main_controller.get_digital_new_press(
                    pros::E_CONTROLLER_DIGITAL_X)) {
-      printToBrain(smallText, 25, 40, "Selected: FALSE");
+      printToBrain(smallText, 25, 60, "Selected: FALSE");
       testsToRun[1] = false;
       pros::delay(150);
       break;

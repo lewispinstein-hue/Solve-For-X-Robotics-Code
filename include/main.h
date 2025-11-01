@@ -65,6 +65,7 @@ extern "C" {
 #endif
 void clearScreen();
 int testExpoJoystick(int);
+//do not touch these foward declarations
 void autonomous(void);
 void initialize(void);
 void disabled(void);

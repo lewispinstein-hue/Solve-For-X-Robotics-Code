@@ -1,5 +1,6 @@
 #include "setup.h"
 #include "lemlib/chassis/trackingWheel.hpp"
+#include "pros/misc.h"
 #include "pros/rotation.hpp"
 #include "pros/screen.h"
 
@@ -79,8 +80,8 @@ lemlib::Chassis chassis(main_drivetrain, lateralSettings, angularSettings,
 // creating each user with their wanted settings
 // visit users_class.h for User setup explanation
 Users eli("Eli     ", 25, 40, 1.8, 3, 3, Users::ControlType::Arcade,
-          pros::E_CONTROLLER_DIGITAL_R2, pros::E_CONTROLLER_DIGITAL_L2,
-          pros::E_CONTROLLER_DIGITAL_R1, pros::E_CONTROLLER_DIGITAL_B);
+          pros::E_CONTROLLER_DIGITAL_R2, pros::E_CONTROLLER_DIGITAL_R1,
+          pros::E_CONTROLLER_DIGITAL_L2, pros::E_CONTROLLER_DIGITAL_B);
 
 Users lewis("Lewis", 25, 40, 1.9, 1.4, 3, Users::ControlType::Arcade,
             pros::E_CONTROLLER_DIGITAL_R2, pros::E_CONTROLLER_DIGITAL_R1,

@@ -18,9 +18,8 @@ void selectRoute() {
     if (sideColor != MIDDLE) {
       break; // Exit the loop if the input is valid
     }
-    clearScreen();
-    // return;//FOR TESTING
     printToBrain(smallText, 25, 40, "Please pick a blue or red circle");
+    continue;
   }
   while (true) {
     printToBrain(smallText, 25, 60, "Pick path side");
@@ -29,12 +28,13 @@ void selectRoute() {
       break; // Exit the loop if the input is valid
     }
     printToBrain(smallText, 25, 80, "Please pick left or right");
+    continue;
   }
   clearScreen();
   printToBrain(TEXT_MEDIUM, 25, 120, "Color: %s | Side: %s",
                (sideColor == 0) ? "Blue" : "Red",
                (sideSide == 0) ? "Left" : "Right");
-  pros::delay(2000);
+  pros::delay(4000);
   clearScreen();
   return;
 }
@@ -55,7 +55,7 @@ void startingLeft() {
   chassis.moveToPoint(52, -47, 500, {}, false);
   chassis.turnToHeading(90, 1500, {}, false);
   // then move backwards into the high goal
-  chassis.moveToPoint(24, -47, 1000, {.forwards = false, .maxSpeed = 60},
+  chassis.moveToPoint(22, -47, 1000, {.forwards = false, .maxSpeed = 60},
                       false);
   chassis.setPose(24, -47, 90);
   // start moving pre-loaded ball into high goal
@@ -90,10 +90,9 @@ void startingRight() {
   // move to goal
   double currentY = chassis.getPose().y;
   chassis.turnToHeading(90, 1000, {.maxSpeed = 80});
-  chassis.moveToPoint(20, 47, 3000, {.forwards = false, .maxSpeed = 40},
-                      false);
-  // chassis.setPose(27, 47, 90);
-
+  chassis.moveToPoint(20, 47, 3000, {.forwards = false, .maxSpeed = 40}, false);
+  pros::delay(2000);
+  chassis.setPose(27, 47, 90);
 
   main_controller.rumble("-.");
   // reset pos to couteract motor slipping
