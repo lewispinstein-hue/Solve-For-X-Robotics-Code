@@ -39,6 +39,7 @@ void initialize() {
 void disabled() {
   current_ball_conveyor_state = STOPPED;
   funnel_engaged = false;
+  chassis.cancelAllMotions();
 }
 
 /**
@@ -55,6 +56,7 @@ void competition_initialize() {}
 // function to update conveyor motors based on enum states
 
 // function to check if any controller buttons are pressed
+//
 int pnTimesPushed = 0;
 void checkControllerButtonPress() {
   // handle pnuematics on button press

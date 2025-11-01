@@ -55,13 +55,13 @@ lemlib::OdomSensors
 // settings lemlib uses (need to be tweaked)
 lemlib::ControllerSettings lateralSettings(18, 0, 50, // kP, kI, kD
                                            0,    // integral anti-windup range
-                                           0, 0, // small error range, timeout
-                                           0, 0, // large error range, timeout
+                                           .5, 300, // small error range, timeout
+                                           2, 500, // large error range, timeout
                                            10     // max acceleration (slew)
 );
 
 lemlib::ControllerSettings angularSettings(6, 0, 65, 
-  0, 0, 0, 0, 0, 10);
+  0, 1, 300, 2, 500, 10);
 
 // creating drivedrain object te be used in chassis
 lemlib::Drivetrain main_drivetrain(

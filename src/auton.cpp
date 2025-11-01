@@ -97,6 +97,7 @@ void startingRight() {
   chassis.moveToPoint(48, 47, 1500, {.maxSpeed = 80});
   // turn to correct heading
   chassis.turnToHeading(90, 800, {.maxSpeed = 80});
+  chassis.waitUntilDone();
   chassis.moveToPoint(48, 47, 500, {.maxSpeed = 80});
 
   // move to goal
