@@ -1,190 +1,185 @@
-#include "setup.h"
+#include "main.h"
+#include "lemlib/api.hpp"
+#include "lemlib/chassis/chassis.hpp"
 #include "lemlib/chassis/trackingWheel.hpp"
-#include "pros/misc.h"
+#include "pros/colors.hpp"
+#include "pros/imu.hpp"
+#include "pros/motors.h"
 #include "pros/rotation.hpp"
-#include "pros/screen.h"
-
-// init drivetrain motor groups and controller.
-// sets motor to blue gear cartridge, inits ports, and starts tracking the
-// encoding for the motors in degrees
-pros::MotorGroup left_motors_drivetrain({-6, 13, -14},
-                                        pros::v5::MotorGears::rpm_600,
-                                        pros::v5::MotorUnits::degrees);
-
-pros::MotorGroup right_motors_drivetrain({8, 18, -20},
-                                         pros::v5::MotorGears::rpm_600,
-                                         pros::v5::MotorUnits::degrees);
-
-// creating controller
-pros::Controller main_controller(pros::E_CONTROLLER_MASTER);
-// pneumatics
-bool funnel_engaged = false;
-pros::adi::Pneumatics funnel_pneumatic_right('H', funnel_engaged);
-pros::adi::Pneumatics funnel_pneumatic_left('G', funnel_engaged);
-
-// lemlib objects
-//  Lemlib initialization
-
-// the length of our robot from furthest wheel to closest wheel on the same side
-constexpr float TRACK_WIDTH = 10.25;
-
-pros::Imu imu(16); // the slot for our imu
-// slot for horizontal1 tracking wheel
-pros::Rotation horizontal1(15);
-// tracking wheels are the built in IME's in the motors
-lemlib::TrackingWheel leftVerticalTrackingWheel(&left_motors_drivetrain,
-                                                lemlib::Omniwheel::NEW_325,
-                                                (-TRACK_WIDTH / 2), 400);
-
-lemlib::TrackingWheel rightVerticalTrackingWheel(&right_motors_drivetrain,
-                                                 lemlib::Omniwheel::NEW_325,
-                                                 (TRACK_WIDTH / 2), 400);
-// external sensor for tracking horizontal movement
-lemlib::TrackingWheel horizontalTrackingWheel(&horizontal1,
-                                              lemlib::Omniwheel::NEW_275, 0.5);
-// sensor init with the sensors we created above
-
-lemlib::OdomSensors
-    odomSensors(&leftVerticalTrackingWheel,  // vertical1
-                &rightVerticalTrackingWheel, // vertical2
-                &horizontalTrackingWheel,    // horizontal1
-                nullptr, // horizontal2 (no horizontal tracking wheel)
-                &imu     // IMU
-    );
-
-// settings lemlib uses (need to be tweaked)
-lemlib::ControllerSettings lateralSettings(18, 0, 50, // kP, kI, kD
-                                           0,    // integral anti-windup range
-                                           .5, 300, // small error range, timeout
-                                           2, 500, // large error range, timeout
-                                           10     // max acceleration (slew)
-);
-
-lemlib::ControllerSettings angularSettings(6, 0, 65, 
-  0, 1, 300, 2, 500, 10);
-
-// creating drivedrain object te be used in chassis
-lemlib::Drivetrain main_drivetrain(
-    &left_motors_drivetrain,  // left motor group
-    &right_motors_drivetrain, // right motor group
-    8.0625, // track width in inches (measure center-to-center of wheels)
-    lemlib::Omniwheel::NEW_325, // 3.25" omni wheels
-    600, // wheel RPM (green cartridge = 200, blue = 600, red = 100)
-    2    // chase power (leave as 2 unless tuning)
-);
-
-// creating chassis for odometry and PID
-lemlib::Chassis chassis(main_drivetrain, lateralSettings, angularSettings,
-                        odomSensors);
-
-// creating each user with their wanted settings
-// visit users_class.h for User setup explanation
-Users eli("Eli     ", 25, 40, 1.8, 3, 3, Users::ControlType::Arcade,
-          pros::E_CONTROLLER_DIGITAL_R2, pros::E_CONTROLLER_DIGITAL_R1,
-          pros::E_CONTROLLER_DIGITAL_L2, pros::E_CONTROLLER_DIGITAL_B);
-
-Users lewis("Lewis", 25, 40, 1.9, 1.4, 3, Users::ControlType::Arcade,
-            pros::E_CONTROLLER_DIGITAL_R2, pros::E_CONTROLLER_DIGITAL_R1,
-            pros::E_CONTROLLER_DIGITAL_UP, pros::E_CONTROLLER_DIGITAL_B);
-
-Users ian("Ian", 20, 30, 2.1, 1.5, 3, Users::ControlType::Arcade,
-          pros::E_CONTROLLER_DIGITAL_R2, pros::E_CONTROLLER_DIGITAL_R1,
-          pros::E_CONTROLLER_DIGITAL_L2, pros::E_CONTROLLER_DIGITAL_A);
-
-Users sanjith("Sanjith", 25, 40, 2.1, 1.5, 3, Users::ControlType::Arcade,
-              pros::E_CONTROLLER_DIGITAL_R1, pros::E_CONTROLLER_DIGITAL_R2,
-              pros::E_CONTROLLER_DIGITAL_L1, pros::E_CONTROLLER_DIGITAL_B);
-
-Users *Users::currentUser = &sanjith; // globally initialize default user
-
-// creating clear screen function
-void clearScreen() {
-  // just trying everything to clear the screen.
-  pros::screen::erase_rect(0, 0, 480, 272);
-  pros::screen::fill_rect(0, 0, 480, 272);
-  pros::screen::erase();
-}
-
-// from here: code for checking if the screen is pressed
-constexpr int SCREEN_WIDTH = 480;
-constexpr int SCREEN_HEIGHT = 240;
-constexpr int BUTTON_DIAMETER = 75; // circle diameter
-constexpr int BUTTON_RADIUS = BUTTON_DIAMETER / 2;
-constexpr int BUTTON_Y_CENTER =
-    SCREEN_HEIGHT - BUTTON_RADIUS - 5; // a bit above bottom edge
-constexpr int BUTTON_SPACING = 20;     // gap between circles
-
-void drawBottomButtons() {
-  clearScreen();
-
-  // Calculate the centers for the three circles
-  int center1_x = SCREEN_WIDTH / 6; // roughly 1/6 of width (left)
-  int center2_x = SCREEN_WIDTH / 2; // middle
-  int center3_x = SCREEN_WIDTH - SCREEN_WIDTH / 6; // right
-
-  // LEFT circle
-  pros::screen::set_pen(pros::c::COLOR_BLUE);
-  pros::screen::fill_circle(center1_x, BUTTON_Y_CENTER, BUTTON_RADIUS);
-
-  // MIDDLE circle
-  pros::screen::set_pen(pros::c::COLOR_GREEN);
-  pros::screen::fill_circle(center2_x, BUTTON_Y_CENTER, BUTTON_RADIUS);
-
-  // RIGHT circle
-  pros::screen::set_pen(pros::c::COLOR_RED);
-  pros::screen::fill_circle(center3_x, BUTTON_Y_CENTER, BUTTON_RADIUS);
-
-  // Label each circle
-  pros::screen::set_pen(pros::c::COLOR_WHITE); 
-  pros::screen::print(TEXT_MEDIUM, center1_x - 25, BUTTON_Y_CENTER - 10,
-                      "LEFT");
-  pros::screen::print(TEXT_MEDIUM, center2_x - 20, BUTTON_Y_CENTER - 10, "MID");
-  pros::screen::print(TEXT_MEDIUM, center3_x - 30, BUTTON_Y_CENTER - 10,
-                      "RIGHT");
-}
 
 /*
- Wait for a tap (press+release) inside the bottom button area.
- Uses release_count to detect the tap event which is compatible across PROS
- versions.
+functionality:
+Left joystick = forward + backward
+Right joystick = left and right
+R1 = spin intake
+R2 = spins body
+L1 =
+L2 = extand and retract de-scorer
+x =
+B = release intake
+
+ports:
+left dt = 3,12,13
+right dt = 8,-20,18
+1st intake = -2
+last stage = 9
+
+descorrer = TBD
+scoring arm = TBD
+
+arcade double stick
+0.25 desaturatebias
 */
 
-constexpr int CENTER_LEFT = SCREEN_WIDTH / 6;
-constexpr int CENTER_MIDDLE = SCREEN_WIDTH / 2;
-constexpr int CENTER_RIGHT = SCREEN_WIDTH - SCREEN_WIDTH / 6;
+// left motor group with ports 3,12,13
+pros::MotorGroup left_motor_group({3, 12, 13}, pros::v5::MotorGears::rpm_600,
+                                  pros::v5::MotorUnits::degrees);
+// right motor group with ports 8,18, and (20 reversed)
+pros::MotorGroup right_motor_group({8, -20, 18}, pros::v5::MotorGears::rpm_600,
+                                   pros::v5::MotorUnits::degrees);
 
-ButtonPressed waitForBottomButtonTap() {
-  int last_release_count = pros::screen::touch_status().release_count;
+lemlib::Drivetrain drivetrain(&left_motor_group, &right_motor_group, 11.0,
+                              lemlib::Omniwheel::NEW_325, 600, 2);
+
+pros::Imu imu(10);
+/*
+lemlib::OdomSensors sensors(); 		waiting for team input on tracking wheel
+*/
+// lateral PID controller
+lemlib::ControllerSettings
+    lateral_controller(10,  // proportional gain (kP)
+                       0,   // integral gain (kI)
+                       3,   // derivative gain (kD)
+                       3,   // anti windup
+                       1,   // small error range, in inches
+                       100, // small error range timeout, in milliseconds
+                       3,   // large error range, in inches
+                       500, // large error range timeout, in milliseconds
+                       20   // maximum acceleration (slew)
+    );
+
+// angular PID controller
+lemlib::ControllerSettings
+    angular_controller(2,   // proportional gain (kP)
+                       0,   // integral gain (kI)
+                       10,  // derivative gain (kD)
+                       3,   // anti windup
+                       1,   // small error range, in degrees
+                       100, // small error range timeout, in milliseconds
+                       3,   // large error range, in degrees
+                       500, // large error range timeout, in milliseconds
+                       0    // maximum acceleration (slew)
+    );
+lemlib::OdomSensors sensors(nullptr, nullptr, nullptr, nullptr, &imu);
+// create the chassis
+lemlib::Chassis chassis(drivetrain,         // drivetrain settings
+                        lateral_controller, // lateral PID settings
+                        angular_controller, // angular PID settings
+                        sensors             // odometry sensors
+);
+
+/**
+ * A callback function for LLEMU's center button.
+ *
+ * When this callback is fired, it will toggle line 2 of the LCD text between
+ * "I was pressed!" and nothing.
+ */
+void on_center_button() {
+  static bool pressed = false;
+  pressed = !pressed;
+  if (pressed) {
+    pros::lcd::set_text(2, "I was pressed!");
+  } else {
+    pros::lcd::clear_line(2);
+  }
+}
+
+/**
+ * Runs initialization code. This occurs as soon as the program is started.
+ *
+ * All other competition modes are blocked by initialize; it is recommended
+ * to keep execution time for this mode under a few seconds.
+ */
+void initialize() {
+  pros::lcd::initialize(); // initialize brain screen
+  chassis.calibrate();     // calibrate sensors
+  // print position to brain screen
+  pros::Task screen_task([&]() {
+    while (true) {
+      // print robot location to the brain screen
+      pros::lcd::print(0, "X: %f", chassis.getPose().x);         // x
+      pros::lcd::print(1, "Y: %f", chassis.getPose().y);         // y
+      pros::lcd::print(2, "Theta: %f", chassis.getPose().theta); // heading
+      // delay to save resources
+      pros::delay(20);
+    }
+  });
+}
+/**
+ * Runs while the robot is in the disabled state of Field Management System
+ * or the VEX Competition Switch, following either autonomous or opcontrol.
+ * When the robot is enabled, this task will exit.
+ */
+void disabled() {}
+
+/**
+ * Runs after initialize(), and before autonomous when connected to the
+ * Field Management System or the VEX Competition Switch. This is intended
+ * for competition-specific initialization routines, such as an autonomous
+ * selector on the LCD.
+ *
+ * This task will exit when the robot is enabled and autonomous or opcontrol
+ * starts.
+ */
+void competition_initialize() {}
+
+/**
+ * Runs the user autonomous code. This function will be started in its own
+ * task with the default priority and stack size whenever the robot is
+ * enabled via the Field Management System or the VEX Competition Switch in
+ * the autonomous mode. Alternatively, this function may be called in
+ * initialize or opcontrol for non-competition testing purposes.
+ *
+ * If the robot is disabled or communications is lost, the autonomous task
+ * will be stopped. Re-enabling the robot will restart the task, not
+ * re-start it from where it left off.
+ */
+// void autonomous() {}
+
+/**
+ * Runs the operator control code. This function will be started in its own
+ * task with the default priority and stack size whenever the robot is
+ * enabled via the Field Management System or the VEX Competition Switch in
+ * the operator control mode.
+ *
+ * If no competition control is connected, this function will run
+ * immediately following initialize().
+ *
+ * If the robot is disabled or communications is lost, the
+ * operator control task will be stopped. Re-enabling the robot will restart
+ * the task, not resume it from where it left off.
+ */
+void opcontrol() {
+  pros::Controller master(pros::E_CONTROLLER_MASTER);
+  pros::MotorGroup left_mg({1, -2, 3});   // Creates a motor group with forwards
+                                          // ports 1 & 3 and reversed port 2
+  pros::MotorGroup right_mg({-4, 5, -6}); // Creates a motor group with forwards
+                                          // port 5 and reversed ports 4 & 6
 
   while (true) {
-    screen_touch_status_s touch = pros::screen::touch_status();
+    pros::lcd::print(0, "%d %d %d",
+                     (pros::lcd::read_buttons() & LCD_BTN_LEFT) >> 2,
+                     (pros::lcd::read_buttons() & LCD_BTN_CENTER) >> 1,
+                     (pros::lcd::read_buttons() & LCD_BTN_RIGHT) >>
+                         0); // Prints status of the emulated screen LCDs
 
-    // Detect a release event (finger lifted)
-    if (touch.release_count != last_release_count) {
-      last_release_count = touch.release_count;
-
-      int x = touch.x;
-      int y = touch.y;
-
-      // Calculate squared distances to each circle
-      int dxL = x - CENTER_LEFT;
-      int dyL = y - BUTTON_Y_CENTER;
-      int dxM = x - CENTER_MIDDLE;
-      int dyM = y - BUTTON_Y_CENTER;
-      int dxR = x - CENTER_RIGHT;
-      int dyR = y - BUTTON_Y_CENTER;
-
-      int r2 = pow(BUTTON_RADIUS, 2);
-
-      // check if the button press is in the desired area
-      if (pow(dxL, 2) + pow(dyL, 2) <= r2)
-        return LEFT;
-      if (pow(dxM, 2) + pow(dyM, 2) <= r2)
-        return MIDDLE;
-      if (pow(dxR, 2) + pow(dyR, 2) <= r2)
-        return RIGHT;
-    }
-
-    pros::delay(20);
+    // Arcade control scheme
+    int dir = master.get_analog(
+        ANALOG_LEFT_Y); // Gets amount forward/backward from left joystick
+    int turn = master.get_analog(
+        ANALOG_RIGHT_X);       // Gets the turn left/right from right joystick
+    left_mg.move(dir - turn);  // Sets left motor voltage
+    right_mg.move(dir + turn); // Sets right motor voltage
+    pros::delay(20);           // Run for 20 ms then update
   }
 }
