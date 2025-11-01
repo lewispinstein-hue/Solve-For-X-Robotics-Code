@@ -44,7 +44,7 @@ ASSET(BlueLeftS1_txt) // moves from starting pos to inbetween loader and high
 
 // path for starting on left side of red parking spot
 void startingLeft() {
-  chassis.setPose(64, -16, 270);
+  chassis.setPose(64, -14, 270);
   // we move to the inbetween loader and high goal
   chassis.follow(BlueLeftS1_txt, 10, 2000, true, true);
   while (chassis.isInMotion()) {
@@ -78,29 +78,33 @@ ASSET(BlueRightT_txt)
 
 void startingRight() {
   // set starting pose
+  chassis.calibrate();
   chassis.setPose(64, 14, 270);
   // start route
-  chassis.moveToPoint(40, 14, 2000, {.maxSpeed = 80});
-  chassis.moveToPoint(40, 47, 2000, {.maxSpeed = 80});
-  chassis.moveToPoint(48, 47, 2000, {.maxSpeed = 80});
+  chassis.moveToPoint(46, 18, 1500, {.maxSpeed = 80}, false);
+  //move to balls
+  chassis.moveToPoint(39, 22, 1300, {.maxSpeed = 80}, false);
+  //face balls
+  chassis.turnToHeading(270, 400, {.maxSpeed = 80}, false);
+  chassis.moveToPoint(39, 22, 900, {.maxSpeed = 80}, false);
+  //move to pick up balls
+  setConveyorMotors(UPPER_GOAL, 100);
+  chassis.moveToPoint(16, 22, 1200, {.maxSpeed = 40}, false);
+  setConveyorMotors( STOPPED);
+  //turn to inbetween goal and loader
+  chassis.turnToHeading(45, 500, {.maxSpeed = 80});
+  //go to inbetween goal and loader
+  chassis.moveToPoint(48, 47, 1500, {.maxSpeed = 80});
   // turn to correct heading
-  chassis.turnToHeading(90, 1000, {.maxSpeed = 80});
-  chassis.moveToPoint(48, 47, 2000, {.maxSpeed = 80});
+  chassis.turnToHeading(90, 800, {.maxSpeed = 80});
+  chassis.moveToPoint(48, 47, 500, {.maxSpeed = 80});
 
   // move to goal
-  double currentY = chassis.getPose().y;
   chassis.turnToHeading(90, 1000, {.maxSpeed = 80});
-  chassis.moveToPoint(20, 47, 3000, {.forwards = false, .maxSpeed = 40}, false);
-  pros::delay(2000);
+  chassis.moveToPoint(20, 47, 2500, {.forwards = false, .maxSpeed = 40}, false);
   chassis.setPose(27, 47, 90);
 
-  main_controller.rumble("-.");
   // reset pos to couteract motor slipping
-  // wait to start moving
-  while (chassis.isInMotion()) {
-    // block actions
-    pros::delay(20);
-  }
   // start scoring ball
   setConveyorMotors(UPPER_GOAL);
   // we wait 2 seconds for ball to score before stopping the conveyor
@@ -108,15 +112,14 @@ void startingRight() {
   // stopping conveyor motors
   setConveyorMotors(STOPPED);
   // moving to inbetween loader and goal
-  chassis.moveToPoint(40, 47, 800, {.maxSpeed = 80});
-  // turning to face balls
+  chassis.moveToPoint(54, 47, 800, {.maxSpeed = 80});
+  // turning to face loader
   chassis.turnToHeading(180, 1000);
-  // move to balls
-  chassis.moveToPoint(42, 22, 1000, {}, false);
-  // face balls
-  chassis.turnToHeading(270, 1000);
-  // next step: move to balls slowly and intake
+  //go into parking zone:
+  // chassis.moveToPoint(64, 14, 4000, {.maxSpeed = 60});
+  // chassis.turnToHeading(270, 800);
 }
+
 
 // function to get calling during comp
 void autonomous() {
@@ -131,7 +134,6 @@ void autonomous() {
     startingLeft();
   } else {
     // run program that moves robot foward and then turns left
-    chassis.moveToPoint(0, 20, 1000);
-    chassis.turnToHeading(90, 500);
+    startingRight();
   }
 }

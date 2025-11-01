@@ -87,15 +87,15 @@ void checkControllerButtonPress() {
                  Users::currentUser->getSfBottomGoal())) {
     setConveyorMotors((current_ball_conveyor_state == OUTTAKE) ? STOPPED
                                                                : OUTTAKE);
-  }
+  } 
 
   // testing buttons for lemlib
   else if (main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_A)) {
     // chassis.setPose(0, 0, 0);
     // chassis.cancelAllMotions();
     // main_controller.print(0, 0, "Pose reset to 0,0,0");
-    // selectRoute();
-    // autonomous();
+    selectRoute();
+    autonomous();
   } else if (main_controller.get_digital(pros::E_CONTROLLER_DIGITAL_Y)) {
     // autonomousRoute1();
     // chassis.setPose(0, 0, 0);

@@ -12,10 +12,10 @@ enum ball_conveyor_state {
 
 // Declare the global state variable as 'extern'.
 extern ball_conveyor_state current_ball_conveyor_state;
-extern ball_conveyor_state new_state;
+extern ball_conveyor_state set_state;
 //
 extern pros::Motor upper_transit_motor;
 extern pros::Motor intake_transit_motor;
 
 // foward declarations for the functions inside of the cpp file asd
-void setConveyorMotors(ball_conveyor_state new_state);
+void setConveyorMotors(ball_conveyor_state set_state, int voltage = 127);
